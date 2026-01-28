@@ -53,6 +53,86 @@ import {
 
 const GALLERY_ROOT = 'safari-gallery';
 
+// ============================================================================
+// CACHING SYSTEM
+// ============================================================================
+// Simple in-memory cache with TTL for server-side rendering performance.
+// Cache is automatically cleared on any write operation (upload, delete, etc.)
+// This prevents stale data while improving read performance.
+
+interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
+    key: string;
+}
+
+// Cache configuration
+const CACHE_CONFIG = {
+    TTL: 5 * 60 * 1000,        // 5 minutes - reasonable for gallery data
+    MAX_ENTRIES: 100,           // Prevent memory leaks
+    ENABLED: true,              // Easy toggle for debugging
+};
+
+// Type-safe cache store
+const cacheStore = new Map<string, CacheEntry<unknown>>();
+
+/**
+ * Get cached data if valid and not expired
+ */
+function getCached<T>(key: string): T | null {
+    if (!CACHE_CONFIG.ENABLED) return null;
+    
+    const entry = cacheStore.get(key);
+    if (!entry) return null;
+    
+    // Check if expired
+    const age = Date.now() - entry.timestamp;
+    if (age > CACHE_CONFIG.TTL) {
+        cacheStore.delete(key);
+        return null;
+    }
+    
+    return entry.data as T;
+}
+
+/**
+ * Store data in cache with timestamp
+ */
+function setCache<T>(key: string, data: T): void {
+    if (!CACHE_CONFIG.ENABLED) return;
+    
+    // Prevent memory leaks - remove oldest entries if at limit
+    if (cacheStore.size >= CACHE_CONFIG.MAX_ENTRIES) {
+        const oldestKey = Array.from(cacheStore.entries())
+            .sort((a, b) => a[1].timestamp - b[1].timestamp)[0]?.[0];
+        if (oldestKey) cacheStore.delete(oldestKey);
+    }
+    
+    cacheStore.set(key, { data, timestamp: Date.now(), key });
+}
+
+/**
+ * Clear all cached data - called after any write operation
+ */
+export function clearCache(): void {
+    cacheStore.clear();
+    console.log('[Cache] Cleared all entries');
+}
+
+/**
+ * Get cache stats for debugging
+ */
+export function getCacheStats(): { size: number; keys: string[] } {
+    return {
+        size: cacheStore.size,
+        keys: Array.from(cacheStore.keys())
+    };
+}
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
 // Types
 export interface GalleryImage {
     src: string;
@@ -201,9 +281,14 @@ async function getImageKitImages(folderPath: string): Promise<GalleryImage[]> {
 }
 
 /**
- * Get all continents with their location counts
+ * Get all continents with their location counts (with caching)
  */
 export async function getContinents(): Promise<GalleryContinent[]> {
+    // Check cache first
+    const cacheKey = 'continents';
+    const cached = getCached<GalleryContinent[]>(cacheKey);
+    if (cached) return cached;
+    
     const config = await getGalleryConfig();
     const savedCovers = await getGalleryCovers();
     
@@ -259,6 +344,8 @@ export async function getContinents(): Promise<GalleryContinent[]> {
         };
     }));
     
+    // Save to cache
+    setCache(cacheKey, continents);
     return continents;
 }
 
@@ -287,9 +374,14 @@ export async function getLocation(continentSlug: string, locationSlug: string): 
 }
 
 /**
- * Get images for a location
+ * Get images for a location (with caching)
  */
 export async function getImages(continentSlug: string, locationSlug: string): Promise<GalleryImage[]> {
+    // Check cache first
+    const cacheKey = `images:${continentSlug}:${locationSlug}`;
+    const cached = getCached<GalleryImage[]>(cacheKey);
+    if (cached) return cached;
+    
     const config = await getGalleryConfig();
     const continent = config.continents.find((c: any) => c.slug === continentSlug);
     if (!continent) return [];
@@ -298,7 +390,11 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
     if (!location) return [];
     
     const folderPath = getLocationFolderPath(continent.name, location.name);
-    return await getImageKitImages(folderPath);
+    const images = await getImageKitImages(folderPath);
+    
+    // Cache the result
+    setCache(cacheKey, images);
+    return images;
 }
 
 /**
@@ -351,11 +447,14 @@ export async function setCoverPhoto(continentName: string, locationName: string,
         const key = `${continentName}/${locationName}`;
         
         if (isSupabaseConfigured()) {
-            return await setCoverInDB(key, imagePath);
+            const result = await setCoverInDB(key, imagePath);
+            if (result.success) clearCache();
+            return result;
         } else {
             const covers = getGalleryCoversLocal();
             covers[key] = imagePath;
             saveGalleryCoversLocal(covers);
+            clearCache();
             return { success: true };
         }
     } catch (error) {
@@ -437,6 +536,7 @@ export async function saveImage(
         const result = await uploadFile(compressedBuffer, compressedName, folder);
         
         if (result.success) {
+            clearCache(); // Clear cache after upload
             return {
                 success: true,
                 path: result.filePath,
@@ -463,7 +563,9 @@ export async function deleteImage(imagePath: string): Promise<{ success: boolean
             return { success: false, error: 'Please use fileId for deletion' };
         }
         
-        return await deleteFile(imagePath);
+        const result = await deleteFile(imagePath);
+        if (result.success) clearCache();
+        return result;
     } catch (error) {
         console.error('Error deleting from ImageKit:', error);
         return { success: false, error: 'Failed to delete image' };
@@ -517,6 +619,7 @@ export async function addLocation(
             
             const result = await addLocationToDB(newLocation);
             if (result.success) {
+                clearCache();
                 return { success: true, location: newLocation };
             }
             return result;
@@ -551,6 +654,7 @@ export async function addLocation(
                 return { success: false, error: 'Failed to save configuration' };
             }
             
+            clearCache();
             return { success: true, location: newLocation };
         }
     } catch (error) {
@@ -595,7 +699,9 @@ export async function deleteLocation(
             await deleteCoverFromDB(coverKey);
             // Delete location from DB
             const locationId = `${continentSlug}-${locationSlug}`;
-            return await deleteLocationFromDB(locationId);
+            const result = await deleteLocationFromDB(locationId);
+            if (result.success) clearCache();
+            return result;
         } else {
             // Local file fallback
             const localConfig = getGalleryConfigLocal();
@@ -614,6 +720,7 @@ export async function deleteLocation(
                 saveGalleryCoversLocal(covers);
             }
             
+            clearCache();
             return { success: true };
         }
     } catch (error) {
@@ -637,7 +744,9 @@ export async function updateLocation(
     try {
         if (isSupabaseConfigured()) {
             const locationId = `${continentSlug}-${locationSlug}`;
-            return await updateLocationInDB(locationId, updates);
+            const result = await updateLocationInDB(locationId, updates);
+            if (result.success) clearCache();
+            return result;
         } else {
             // Local file fallback
             const config = getGalleryConfigLocal();
@@ -670,6 +779,7 @@ export async function updateLocation(
                 return { success: false, error: 'Failed to save configuration' };
             }
             
+            clearCache();
             return { success: true };
         }
     } catch (error) {
