@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #D4A574;
+    --primary-foreground: #FFFFFF;
+    --secondary: #2D5016;
+    --secondary-foreground: #FFFFFF;
+    --accent: #E67E22;
+    --accent-foreground: #FFFFFF;
+    --background: #F8F6F3;
+    --foreground: #2C3E50;
+    --muted: #7F8C8D;
+    --muted-foreground: #FFFFFF;
+  }
+
+  body {
+    @apply bg-neutral-cream text-neutral-charcoal font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading text-neutral-charcoal leading-tight;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-card bg-safari-gold text-white font-semibold transition-all duration-300 hover:bg-safari-gold-dark hover:shadow-card-hover active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-card bg-forest-green text-white font-semibold transition-all duration-300 hover:bg-forest-green-dark hover:shadow-card-hover active:scale-95;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-card border-2 border-safari-gold text-safari-gold font-semibold transition-all duration-300 hover:bg-safari-gold hover:text-white active:scale-95;
+  }
+
+  .section-padding {
+    @apply py-section-sm md:py-section;
+  }
+
+  .card-hover-effect {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-neutral-cream;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-safari-gold-light rounded-full border-2 border-neutral-cream hover:bg-safari-gold;
+}

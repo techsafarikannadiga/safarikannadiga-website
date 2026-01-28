@@ -1,0 +1,29 @@
+{
+  "brand": {
+    "name": "SafariKannadiga",
+    "tagline": "Discover the Wild Heart of Africa & Asia",
+    "description": "Expert-led photography safaris and luxury wildlife tours across Kenya, Tanzania, Botswana, and India.",
+    "logos": {
+      "color": "/images/SK_logo/colour/SK-LOGO-colour.png",
+      "white": "/images/SK_logo/white/SK-LOGO-white.png",
+      "black": "/images/SK_logo/Black/SK-LOGO-Black.png"
+    }
+  },
+  "heroImage": "/images/hero-main.jpg",
+  "contact": {
+    "email": "info@safarikannadiga.com",
+    "phone": "+254 726 088361",
+    "whatsapp": "254726088361",
+    "address": "Nairobi, Kenya & Bangalore, India"
+  },
+  "social": {
+    "instagram": "https://instagram.com/safarikannadiga",
+    "facebook": "https://facebook.com/safarikannadiga",
+    "youtube": "https://youtube.com/@safarikannadiga"
+  },
+  "seo": {
+    "title": "SafariKannadiga | Premium Wildlife Safaris & Photo Tours",
+    "description": "Experience unforgettable wildlife safaris and photography tours across Africa and Asia. Expert-led expeditions to Kenya, India, and beyond.",
+    "ogImage": "/images/og-image.jpg"
+  }
+}

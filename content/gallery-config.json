@@ -1,0 +1,174 @@
+{
+  "continents": [
+    {
+      "id": "africa",
+      "name": "Africa",
+      "slug": "africa",
+      "description": "Explore the breathtaking wildlife of the African savannahs, from the Great Migration in Kenya to the vast plains of Tanzania.",
+      "coverImage": "/images/gallery/Africa/Masai Mara/A18I0261.jpg",
+      "locations": [
+        {
+          "id": "masai-mara",
+          "name": "Masai Mara",
+          "slug": "masai-mara",
+          "country": "Kenya",
+          "description": "Home to the world-famous Great Migration and incredible big cat sightings.",
+          "wildlife": ["Lions", "Leopards", "Cheetahs", "Elephants", "Wildebeest", "Zebras"]
+        },
+        {
+          "id": "amboseli",
+          "name": "Amboseli",
+          "slug": "amboseli",
+          "country": "Kenya",
+          "description": "Famous for large elephant herds with stunning views of Mount Kilimanjaro.",
+          "wildlife": ["Elephants", "Lions", "Cheetahs", "Hippos", "Giraffes"]
+        },
+        {
+          "id": "lake-nakuru",
+          "name": "Lake Nakuru",
+          "slug": "lake-nakuru",
+          "country": "Kenya",
+          "description": "A stunning lake known for flamingos and rhino sanctuary.",
+          "wildlife": ["Flamingos", "Rhinos", "Lions", "Leopards", "Buffalos"]
+        },
+        {
+          "id": "lake-naivasha",
+          "name": "Lake Naivasha",
+          "slug": "lake-naivasha",
+          "country": "Kenya",
+          "description": "A freshwater lake with incredible birdlife and hippos.",
+          "wildlife": ["Hippos", "Fish Eagles", "Giraffes", "Zebras", "Waterbucks"]
+        },
+        {
+          "id": "lake-elementaita",
+          "name": "Lake Elementaita",
+          "slug": "lake-elementaita",
+          "country": "Kenya",
+          "description": "A UNESCO World Heritage Site known for flamingos and pelicans.",
+          "wildlife": ["Flamingos", "Pelicans", "Zebras", "Gazelles", "Elands"]
+        },
+        {
+          "id": "samburu",
+          "name": "Samburu",
+          "slug": "samburu",
+          "country": "Kenya",
+          "description": "A rugged reserve with unique species like Grevy's zebra and reticulated giraffe.",
+          "wildlife": ["Grevy's Zebra", "Reticulated Giraffe", "Gerenuk", "Elephants", "Lions"]
+        },
+        {
+          "id": "tsavo",
+          "name": "Tsavo",
+          "slug": "tsavo",
+          "country": "Kenya",
+          "description": "Kenya's largest national park, famous for red elephants and diverse landscapes.",
+          "wildlife": ["Red Elephants", "Lions", "Leopards", "Hippos", "Crocodiles"]
+        },
+        {
+          "id": "nairobi-national-park",
+          "name": "Nairobi National Park",
+          "slug": "nairobi-national-park",
+          "country": "Kenya",
+          "description": "The only national park within a capital city, offering urban wildlife experiences.",
+          "wildlife": ["Lions", "Rhinos", "Buffalos", "Giraffes", "Zebras"]
+        },
+        {
+          "id": "olpejeta",
+          "name": "Ol Pejeta",
+          "slug": "olpejeta",
+          "country": "Kenya",
+          "description": "Home to the last two northern white rhinos and a chimpanzee sanctuary.",
+          "wildlife": ["Rhinos", "Chimpanzees", "Lions", "Elephants", "Leopards"]
+        },
+        {
+          "id": "serengeti",
+          "name": "Serengeti",
+          "slug": "serengeti",
+          "country": "Tanzania",
+          "description": "The endless plains hosting the Great Migration and unmatched predator action.",
+          "wildlife": ["Lions", "Cheetahs", "Leopards", "Wildebeest", "Crocodiles"]
+        },
+        {
+          "id": "ngorongoro",
+          "name": "Ngorongoro Crater",
+          "slug": "ngorongoro",
+          "country": "Tanzania",
+          "description": "A UNESCO World Heritage Site with the world's largest intact volcanic caldera.",
+          "wildlife": ["Black Rhinos", "Lions", "Elephants", "Flamingos", "Hippos"]
+        }
+      ]
+    },
+    {
+      "id": "asia",
+      "name": "Asia",
+      "slug": "asia",
+      "description": "Discover the majestic tigers and diverse wildlife of the Indian subcontinent's national parks and reserves.",
+      "coverImage": "/images/placeholder-safari.jpg",
+      "locations": [
+        {
+          "id": "bandhavgarh",
+          "name": "Bandhavgarh",
+          "slug": "bandhavgarh",
+          "country": "Madhya Pradesh, India",
+          "description": "One of the best places in India to spot Bengal tigers in their natural habitat.",
+          "wildlife": ["Bengal Tigers", "Leopards", "Sloth Bears", "Wild Dogs", "Sambar Deer"]
+        },
+        {
+          "id": "ranthambore",
+          "name": "Ranthambore",
+          "slug": "ranthambore",
+          "country": "Rajasthan, India",
+          "description": "Famous for tigers amidst ancient ruins and stunning landscapes.",
+          "wildlife": ["Bengal Tigers", "Leopards", "Sloth Bears", "Crocodiles", "Sambar Deer"]
+        },
+        {
+          "id": "bandipur",
+          "name": "Bandipur",
+          "slug": "bandipur",
+          "country": "Karnataka, India",
+          "description": "A premier tiger reserve in the Western Ghats with diverse wildlife.",
+          "wildlife": ["Tigers", "Elephants", "Leopards", "Gaur", "Wild Dogs"]
+        },
+        {
+          "id": "kabini",
+          "name": "Kabini",
+          "slug": "kabini",
+          "country": "Karnataka, India",
+          "description": "Known for the legendary black leopard and stunning backwaters.",
+          "wildlife": ["Black Leopard", "Tigers", "Elephants", "Wild Dogs", "Gaur"]
+        },
+        {
+          "id": "kanha",
+          "name": "Kanha",
+          "slug": "kanha",
+          "country": "Madhya Pradesh, India",
+          "description": "Inspiration for Rudyard Kipling's Jungle Book with beautiful sal forests.",
+          "wildlife": ["Bengal Tigers", "Barasingha", "Leopards", "Wild Dogs", "Sloth Bears"]
+        },
+        {
+          "id": "pench",
+          "name": "Pench",
+          "slug": "pench",
+          "country": "Madhya Pradesh, India",
+          "description": "A scenic reserve known for its tiger population and varied birdlife.",
+          "wildlife": ["Bengal Tigers", "Leopards", "Wild Dogs", "Sambar Deer", "Langurs"]
+        },
+        {
+          "id": "tadoba",
+          "name": "Tadoba",
+          "slug": "tadoba",
+          "country": "Maharashtra, India",
+          "description": "Maharashtra's oldest national park with excellent tiger sightings.",
+          "wildlife": ["Bengal Tigers", "Leopards", "Sloth Bears", "Wild Dogs", "Gaur"]
+        },
+        {
+          "id": "corbett",
+          "name": "Jim Corbett",
+          "slug": "corbett",
+          "country": "Uttarakhand, India",
+          "description": "India's first national park, named after the legendary hunter-conservationist.",
+          "wildlife": ["Bengal Tigers", "Elephants", "Leopards", "Gharials", "Wild Boar"]
+        }
+      ]
+    }
+  ]
+}
