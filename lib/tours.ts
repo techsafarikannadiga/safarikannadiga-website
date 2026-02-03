@@ -201,6 +201,7 @@ export async function deleteTour(id: string): Promise<{ success: boolean; error?
 
 /**
  * Get tours for homepage display (upcoming + featured)
+ * Sorts: Upcoming/Sold-out (soonest first) -> Completed (most recent first)
  */
 export async function getFeaturedTours(): Promise<Tour[]> {
     if (!supabase) return [];
@@ -209,13 +210,26 @@ export async function getFeaturedTours(): Promise<Tour[]> {
         .from('upcoming_tours')
         .select('*')
         .eq('featured', true)
-        .order('start_date', { ascending: true })
-        .limit(4);
+        .limit(20); // Increased limit to ensure we get enough tours
 
     if (error) {
         console.error('Error fetching featured tours:', error);
         return [];
     }
 
-    return data || [];
+    if (!data) return [];
+
+    // Custom sorting:
+    // 1. Upcoming & Sold Out tours (sorted by date ASC - soonest first)
+    // 2. Completed tours (sorted by date DESC - most recent first)
+    const activeTours = data
+        .filter(t => t.status !== 'completed')
+        .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+
+    const completedTours = data
+        .filter(t => t.status === 'completed')
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+    // Combine and take top 8 (or however many you want to show)
+    return [...activeTours, ...completedTours];
 }
