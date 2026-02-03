@@ -15,12 +15,15 @@ interface Testimonial {
     photos: string[];
     approved: boolean;
     created_at: string;
+    source?: 'website' | 'google' | 'facebook';
+    avatar_url?: string;
 }
 
 export function TestimonialsAdmin() {
     const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     useEffect(() => {
         fetchTestimonials();
@@ -121,9 +124,17 @@ export function TestimonialsAdmin() {
                     <p className="text-sm text-neutral-gray">
                         Manage user-submitted testimonials •
                         <span className="text-green-600 font-semibold ml-1">{approvedCount} approved</span> •
-                        <span className="text-yellow-600 font-semibold ml-1">{pendingCount} pending</span>
                     </p>
                 </div>
+                <button
+                    onClick={() => setShowImportModal(true)}
+                    className="bg-safari-gold text-white px-4 py-2 rounded-lg font-bold hover:bg-safari-gold-dark transition-colors flex items-center gap-2"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Import / Add
+                </button>
             </div>
 
             {/* Testimonials List */}
@@ -184,8 +195,8 @@ export function TestimonialsAdmin() {
                                     <button
                                         onClick={() => handleApprovalToggle(testimonial.id, testimonial.approved)}
                                         className={`p-2 rounded-lg transition-colors ${testimonial.approved
-                                                ? 'text-gray-400 hover:bg-gray-100'
-                                                : 'text-green-600 hover:bg-green-50'
+                                            ? 'text-gray-400 hover:bg-gray-100'
+                                            : 'text-green-600 hover:bg-green-50'
                                             }`}
                                         title={testimonial.approved ? 'Unapprove' : 'Approve'}
                                     >
@@ -215,14 +226,23 @@ export function TestimonialsAdmin() {
                     <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-safari-gold/20 flex items-center justify-center font-bold text-2xl text-safari-gold">
-                                    {selectedTestimonial.name.charAt(0).toUpperCase()}
+                                <div className="w-16 h-16 rounded-full bg-safari-gold/20 flex items-center justify-center font-bold text-2xl text-safari-gold overflow-hidden relative">
+                                    {selectedTestimonial.avatar_url ? (
+                                        <Image src={selectedTestimonial.avatar_url} alt={selectedTestimonial.name} fill className="object-cover" />
+                                    ) : (
+                                        selectedTestimonial.name.charAt(0).toUpperCase()
+                                    )}
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold">{selectedTestimonial.name}</h3>
                                     <p className="text-neutral-gray">{selectedTestimonial.email}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="flex">{renderStars(selectedTestimonial.rating)}</div>
+                                        {selectedTestimonial.source && selectedTestimonial.source !== 'website' && (
+                                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full capitalize ${selectedTestimonial.source === 'google' ? 'bg-blue-100 text-blue-800' : 'bg-blue-100 text-[#1877F2]'}`}>
+                                                {selectedTestimonial.source} Review
+                                            </span>
+                                        )}
                                         {!selectedTestimonial.approved && (
                                             <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full">
                                                 PENDING APPROVAL
@@ -299,8 +319,8 @@ export function TestimonialsAdmin() {
                                     setSelectedTestimonial(null);
                                 }}
                                 className={`flex-1 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 ${selectedTestimonial.approved
-                                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        : 'bg-green-500 text-white hover:bg-green-600'
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    : 'bg-green-500 text-white hover:bg-green-600'
                                     }`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,6 +343,113 @@ export function TestimonialsAdmin() {
                     </div>
                 </div>
             )}
+
+            <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onSuccess={() => {
+                    setShowImportModal(false);
+                    fetchTestimonials();
+                }}
+            />
+        </div>
+    );
+}
+
+function ImportModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) {
+    if (!isOpen) return null;
+
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setSubmitting(true);
+        const formData = new FormData(e.currentTarget);
+
+        const data = {
+            name: formData.get('name'),
+            source: formData.get('source'), // google, facebook
+            rating: Number(formData.get('rating')),
+            story: formData.get('story'),
+            safari: formData.get('safari') || 'General Experience',
+            visit_date: formData.get('visit_date') || new Date().toISOString().split('T')[0],
+            email: 'imported@external.com', // Placeholder
+            avatar_url: formData.get('avatar_url'),
+            approved: true
+        };
+
+        try {
+            const res = await fetch('/api/admin/testimonials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                onSuccess();
+            } else {
+                alert('Failed to import');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error importing');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
+                <h3 className="text-xl font-bold mb-4">Import Testimonial</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Name</label>
+                            <input name="name" required className="w-full border rounded p-2" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Source</label>
+                            <select name="source" className="w-full border rounded p-2">
+                                <option value="google">Google Review</option>
+                                <option value="facebook">Facebook Review</option>
+                                <option value="website">Direct / Manual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold mb-1">Avatar URL (Optional)</label>
+                        <input name="avatar_url" placeholder="https://..." className="w-full border rounded p-2 text-sm" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Rating</label>
+                            <select name="rating" className="w-full border rounded p-2">
+                                <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                                <option value="4">⭐⭐⭐⭐ (4)</option>
+                                <option value="3">⭐⭐⭐ (3)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Date</label>
+                            <input name="visit_date" type="date" className="w-full border rounded p-2" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold mb-1">Review Content</label>
+                        <textarea name="story" required rows={4} className="w-full border rounded p-2"></textarea>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                        <button type="submit" disabled={submitting} className="px-4 py-2 bg-safari-gold text-white rounded font-bold hover:bg-safari-gold-dark">
+                            {submitting ? 'Importing...' : 'Import Review'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

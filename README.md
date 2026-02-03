@@ -143,6 +143,7 @@ If you are setting this up for the first time or updating, run the SQL scripts i
 2. `scripts/supabase-tours-testimonials.sql` - Tours and Testimonials tables (`upcoming_tours`, `testimonials`)
 3. `scripts/supabase-gallery-likes.sql` - Gallery Likes system (`image_likes`)
 4. `scripts/supabase-newsletter.sql` - Newsletter Subscribers table (`subscribers`)
+5. `scripts/supabase-testimonials-source.sql` - Add source/avatar to testimonials (`testimonials`)
 
 ---
 

@@ -50,6 +50,8 @@ export interface Testimonial {
     photos: string[];
     approved: boolean;
     created_at: string;
+    source?: 'website' | 'google' | 'facebook';
+    avatar_url?: string;
 }
 
 export interface TestimonialInput {
@@ -60,6 +62,9 @@ export interface TestimonialInput {
     rating: number;
     story: string;
     highlights?: string;
+    source?: 'website' | 'google' | 'facebook';
+    avatar_url?: string;
+    approved?: boolean; // Admin can create approved testimonials directly
 }
 
 /**
@@ -213,7 +218,9 @@ export async function createTestimonial(
             story: data.story,
             highlights: data.highlights || null,
             photos: photoUrls,
-            approved: false, // Requires admin approval
+            approved: data.approved ?? false, // Defaults to false unless specified (admin only)
+            source: data.source || 'website',
+            avatar_url: data.avatar_url,
         }])
         .select('id')
         .single();

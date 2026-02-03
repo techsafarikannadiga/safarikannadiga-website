@@ -62,3 +62,27 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ error: 'Failed to delete testimonial' }, { status: 500 });
     }
 }
+
+// POST: Create/Import testimonial (admin)
+import { createTestimonial } from '@/lib/testimonials';
+
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+
+        // Ensure source and approved status are handled
+        const result = await createTestimonial({
+            ...body,
+            approved: true // Auto-approve admin imports by default
+        });
+
+        if (result.success) {
+            return NextResponse.json({ success: true, id: result.id });
+        } else {
+            return NextResponse.json({ error: result.error }, { status: 500 });
+        }
+    } catch (error) {
+        console.error('Testimonial Create Error:', error);
+        return NextResponse.json({ error: 'Failed to create testimonial' }, { status: 500 });
+    }
+}
