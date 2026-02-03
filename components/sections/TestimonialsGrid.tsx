@@ -48,7 +48,7 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
                                         className="w-20 h-20 relative rounded-lg overflow-hidden shrink-0 cursor-pointer hover:opacity-90 transition-opacity border border-gray-100"
                                         onClick={() => openLightbox(testimonial.photos, index)}
                                     >
-                                        <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" />
+                                        <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" sizes="80px" />
                                     </div>
                                 ))}
                             </div>
