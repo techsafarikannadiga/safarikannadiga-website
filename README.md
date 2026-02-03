@@ -142,6 +142,7 @@ If you are setting this up for the first time or updating, run the SQL scripts i
 1. `scripts/supabase-setup.sql` - Core gallery tables (`gallery_locations`, `gallery_covers`)
 2. `scripts/supabase-tours-testimonials.sql` - Tours and Testimonials tables (`upcoming_tours`, `testimonials`)
 3. `scripts/supabase-gallery-likes.sql` - Gallery Likes system (`image_likes`)
+4. `scripts/supabase-newsletter.sql` - Newsletter Subscribers table (`subscribers`)
 
 ---
 
