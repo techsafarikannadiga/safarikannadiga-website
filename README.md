@@ -300,6 +300,12 @@ npm run lint      # Run ESLint
 | `NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT` | Yes | ImageKit URL endpoint |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (for admin database write access) |
+| `GOOGLE_PLACES_API_KEY` | Optional | Google Places API Key (for reviews sync) |
+| `NEXT_PUBLIC_GOOGLE_PLACE_ID` | Optional | Google Place ID (for reviews sync) |
+| `FACEBOOK_PAGE_ID` | Optional | Facebook Page ID (for reviews sync) |
+| `FACEBOOK_ACCESS_TOKEN` | Optional | Facebook Graph API User/Page Access Token |
+| `CRON_SECRET` | Optional | Secret key for protecting cron jobs |
 
 ---
 

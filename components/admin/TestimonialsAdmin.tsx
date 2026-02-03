@@ -126,15 +126,41 @@ export function TestimonialsAdmin() {
                         <span className="text-green-600 font-semibold ml-1">{approvedCount} approved</span> •
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowImportModal(true)}
-                    className="bg-safari-gold text-white px-4 py-2 rounded-lg font-bold hover:bg-safari-gold-dark transition-colors flex items-center gap-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Import / Add
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={async () => {
+                            if (confirm('Start sync with Google & Facebook? This might take a few seconds.')) {
+                                try {
+                                    const res = await fetch('/api/admin/sync', { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        alert(`Sync Complete!\nGoogle: ${data.results.google.added} added\nFacebook: ${data.results.facebook.added} added`);
+                                        fetchTestimonials();
+                                    } else {
+                                        alert('Sync failed - Check API Keys');
+                                    }
+                                } catch (e) {
+                                    alert('Error syncing');
+                                }
+                            }
+                        }}
+                        className="bg-white border border-gray-300 text-neutral-charcoal px-4 py-2 rounded-lg font-bold hover:bg-gray-50 transition-colors flex items-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sync API
+                    </button>
+                    <button
+                        onClick={() => setShowImportModal(true)}
+                        className="bg-safari-gold text-white px-4 py-2 rounded-lg font-bold hover:bg-safari-gold-dark transition-colors flex items-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Import / Add
+                    </button>
+                </div>
             </div>
 
             {/* Testimonials List */}
