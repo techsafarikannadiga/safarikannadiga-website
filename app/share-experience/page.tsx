@@ -28,9 +28,14 @@ export default function ShareExperiencePage() {
     const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { register, handleSubmit, formState: { errors }, setValue } = useForm<ExperienceFormData>();
+    const { register, handleSubmit, formState: { errors }, setValue } = useForm<ExperienceFormData>({
+        defaultValues: {
+            safari: 'General Experience'
+        }
+    });
 
     const safaris = [
+        'General Experience',
         'Masai Mara, Kenya',
         'Serengeti, Tanzania',
         'Amboseli, Kenya',
@@ -213,7 +218,7 @@ export default function ShareExperiencePage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">
-                                        Which Safari? *
+                                        Safari / Experience *
                                     </label>
                                     <select
                                         {...register("safari", { required: true })}
@@ -222,7 +227,6 @@ export default function ShareExperiencePage() {
                                             errors.safari ? "border-red-400" : "border-transparent focus:border-safari-gold"
                                         )}
                                     >
-                                        <option value="">Select a destination</option>
                                         {safaris.map(safari => (
                                             <option key={safari} value={safari}>{safari}</option>
                                         ))}
@@ -230,7 +234,7 @@ export default function ShareExperiencePage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">
-                                        When did you visit?
+                                        When did you visit? (Optional)
                                     </label>
                                     <input
                                         type="month"

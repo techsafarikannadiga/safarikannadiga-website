@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchGoogleReviews, GoogleReview, PlaceDetails } from '@/lib/google-reviews';
 import { getApprovedTestimonials, Testimonial } from '@/lib/testimonials';
+import { TestimonialsGrid } from './TestimonialsGrid';
 
 async function GoogleReviewsDisplay() {
     const placeDetails = await fetchGoogleReviews();
@@ -70,49 +71,7 @@ function ReviewCard({ review }: { review: GoogleReview }) {
     );
 }
 
-function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
-    return (
-        <div className="bg-white p-8 rounded-card shadow-card h-full flex flex-col">
-            <div className="flex text-safari-gold mb-4">
-                {[...Array(5)].map((_, i) => (
-                    <svg key={i} className={`w-5 h-5 ${i < testimonial.rating ? 'fill-current' : 'fill-transparent stroke-current'}`} viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                ))}
-            </div>
 
-            <p className="text-neutral-charcoal leading-relaxed mb-4 flex-grow line-clamp-4">
-                "{testimonial.story}"
-            </p>
-
-            {/* Photo gallery if available */}
-            {testimonial.photos.length > 0 && (
-                <div className="flex gap-2 mb-4">
-                    {testimonial.photos.slice(0, 3).map((photo, index) => (
-                        <div key={index} className="w-16 h-16 relative rounded-lg overflow-hidden">
-                            <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" />
-                        </div>
-                    ))}
-                    {testimonial.photos.length > 3 && (
-                        <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center text-sm font-bold text-neutral-gray">
-                            +{testimonial.photos.length - 3}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            <div className="mt-auto flex items-center gap-4 pt-4 border-t border-neutral-gray/10">
-                <div className="w-12 h-12 rounded-full bg-safari-gold/20 flex items-center justify-center font-bold text-safari-gold">
-                    {testimonial.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                    <h4 className="font-bold text-sm text-neutral-charcoal">{testimonial.name}</h4>
-                    <p className="text-neutral-gray text-xs">{testimonial.safari}</p>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 function FallbackReviews() {
     return (
@@ -144,24 +103,30 @@ export async function TestimonialsSection() {
     return (
         <section className="section-padding bg-neutral-cream overflow-hidden">
             <Container>
-                <div className="text-center mb-8">
+                <div className="text-center mb-8 relative">
                     <span className="text-safari-gold font-bold uppercase tracking-widest text-sm mb-2 block">
                         Guest Experiences
                     </span>
                     <h2 className="text-display mb-4">What Our Travelers Say</h2>
-                    <p className="text-neutral-gray max-w-2xl mx-auto">
+                    <p className="text-neutral-gray max-w-2xl mx-auto mb-8">
                         Real reviews from fellow wildlife enthusiasts who've explored with SafariKannadiga
                     </p>
+
+                    <Link
+                        href="/share-experience"
+                        className="inline-flex items-center gap-2 bg-safari-gold text-white px-6 py-3 rounded-full font-bold hover:bg-safari-gold-dark transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Write a Review
+                    </Link>
                 </div>
 
                 {/* User Testimonials from Database */}
                 {testimonials.length > 0 && (
                     <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-                            {testimonials.map((testimonial) => (
-                                <TestimonialCard key={testimonial.id} testimonial={testimonial} />
-                            ))}
-                        </div>
+                        <TestimonialsGrid testimonials={testimonials} />
                         <div className="border-t border-gray-200 pt-12">
                             <h3 className="text-xl font-bold text-center mb-8">Google Reviews</h3>
                         </div>
