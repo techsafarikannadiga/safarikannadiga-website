@@ -79,14 +79,12 @@ export default function ShareExperiencePage() {
                             and may feature your experience on our website.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <a
-                                href="https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                href="/contact"
                                 className="btn-primary"
                             >
-                                Also Leave a Google Review
-                            </a>
+                                Share Another Experience
+                            </Link>
                             <Link href="/" className="btn-outline">
                                 Back to Home
                             </Link>
@@ -251,14 +249,12 @@ export default function ShareExperiencePage() {
                                 <button type="submit" disabled={isSubmitting} className="btn-primary flex-1 py-4 text-lg disabled:opacity-70 disabled:cursor-not-allowed">
                                     {isSubmitting ? 'Sending...' : 'Share My Experience'}
                                 </button>
-                                <a
-                                    href="https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <Link
+                                    href="/gallery"
                                     className="btn-outline flex-1 py-4 text-lg text-center"
                                 >
-                                    Or Leave Google Review
-                                </a>
+                                    View Our Gallery
+                                </Link>
                             </div>
                         </div>
                     </form>

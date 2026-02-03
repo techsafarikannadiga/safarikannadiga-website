@@ -21,17 +21,36 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// Only create client if configured
+// Public client - uses anon key, respects RLS (for SELECT operations)
 let supabase: SupabaseClient | null = null;
+
+// Admin client - uses service role key, bypasses RLS (for INSERT/UPDATE/DELETE)
+// This is safe because it's only used server-side in API routes
+let supabaseAdmin: SupabaseClient | null = null;
 
 if (supabaseUrl && supabaseAnonKey) {
     supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
 
+if (supabaseUrl && supabaseServiceRoleKey) {
+    supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+}
+
 // Check if Supabase is configured
 export function isSupabaseConfigured(): boolean {
     return !!(supabaseUrl && supabaseAnonKey && supabase);
+}
+
+// Check if admin client is available (for write operations)
+export function isAdminConfigured(): boolean {
+    return !!(supabaseUrl && supabaseServiceRoleKey && supabaseAdmin);
 }
 
 // Types for gallery data
@@ -57,13 +76,13 @@ export interface GalleryCoverDB {
 // Helper functions for gallery config
 export async function getLocationsFromDB(): Promise<GalleryLocationDB[]> {
     if (!supabase) return [];
-    
+
     const { data, error } = await supabase
         .from('gallery_locations')
         .select('*')
         .order('continent_name', { ascending: true })
         .order('name', { ascending: true });
-    
+
     if (error) {
         console.error('Error fetching locations:', error);
         return [];
@@ -72,12 +91,12 @@ export async function getLocationsFromDB(): Promise<GalleryLocationDB[]> {
 }
 
 export async function addLocationToDB(location: Omit<GalleryLocationDB, 'created_at'>): Promise<{ success: boolean; error?: string }> {
-    if (!supabase) return { success: false, error: 'Supabase not configured' };
-    
-    const { error } = await supabase
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
         .from('gallery_locations')
         .insert([location]);
-    
+
     if (error) {
         console.error('Error adding location:', error);
         return { success: false, error: error.message };
@@ -86,13 +105,13 @@ export async function addLocationToDB(location: Omit<GalleryLocationDB, 'created
 }
 
 export async function deleteLocationFromDB(id: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabase) return { success: false, error: 'Supabase not configured' };
-    
-    const { error } = await supabase
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
         .from('gallery_locations')
         .delete()
         .eq('id', id);
-    
+
     if (error) {
         console.error('Error deleting location:', error);
         return { success: false, error: error.message };
@@ -101,16 +120,16 @@ export async function deleteLocationFromDB(id: string): Promise<{ success: boole
 }
 
 export async function updateLocationInDB(
-    id: string, 
+    id: string,
     updates: { description?: string; wildlife?: string[]; country?: string }
 ): Promise<{ success: boolean; error?: string }> {
-    if (!supabase) return { success: false, error: 'Supabase not configured' };
-    
-    const { error } = await supabase
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
         .from('gallery_locations')
         .update(updates)
         .eq('id', id);
-    
+
     if (error) {
         console.error('Error updating location:', error);
         return { success: false, error: error.message };
@@ -120,16 +139,16 @@ export async function updateLocationInDB(
 
 export async function getCoversFromDB(): Promise<Record<string, string>> {
     if (!supabase) return {};
-    
+
     const { data, error } = await supabase
         .from('gallery_covers')
         .select('*');
-    
+
     if (error) {
         console.error('Error fetching covers:', error);
         return {};
     }
-    
+
     const covers: Record<string, string> = {};
     (data || []).forEach((cover: GalleryCoverDB) => {
         covers[cover.location_key] = cover.cover_url;
@@ -138,16 +157,16 @@ export async function getCoversFromDB(): Promise<Record<string, string>> {
 }
 
 export async function setCoverInDB(locationKey: string, coverUrl: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabase) return { success: false, error: 'Supabase not configured' };
-    
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
     // Upsert - insert or update if exists
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('gallery_covers')
         .upsert(
             { location_key: locationKey, cover_url: coverUrl, updated_at: new Date().toISOString() },
             { onConflict: 'location_key' }
         );
-    
+
     if (error) {
         console.error('Error setting cover:', error);
         return { success: false, error: error.message };
@@ -156,13 +175,13 @@ export async function setCoverInDB(locationKey: string, coverUrl: string): Promi
 }
 
 export async function deleteCoverFromDB(locationKey: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabase) return { success: false, error: 'Supabase not configured' };
-    
-    const { error } = await supabase
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
         .from('gallery_covers')
         .delete()
         .eq('location_key', locationKey);
-    
+
     if (error) {
         console.error('Error deleting cover:', error);
         return { success: false, error: error.message };

@@ -6,11 +6,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     const routes = [
         '',
         '/about',
-        '/destinations',
-        '/tours',
         '/gallery',
-        '/blog',
+        '/upcoming-tours',
         '/contact',
+        '/share-experience',
+        '/privacy',
     ].map((route) => ({
         url: `${baseUrl}${route}`,
         lastModified: new Date(),

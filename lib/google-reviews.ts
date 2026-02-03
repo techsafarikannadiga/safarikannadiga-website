@@ -7,13 +7,16 @@
 
 export const GOOGLE_PLACES_CONFIG = {
     // Your Google Place ID - Find it at: https://developers.google.com/maps/documentation/places/web-service/place-id
-    placeId: process.env.NEXT_PUBLIC_GOOGLE_PLACE_ID || 'YOUR_PLACE_ID',
+    // Leave empty string if not configured
+    placeId: process.env.NEXT_PUBLIC_GOOGLE_PLACE_ID || '',
 
     // API key (server-side only for security)
     apiKey: process.env.GOOGLE_PLACES_API_KEY || '',
 
-    // Review link for customers to leave reviews
-    reviewLink: 'https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID'
+    // Review link for customers to leave reviews (update with your actual Place ID)
+    reviewLink: process.env.NEXT_PUBLIC_GOOGLE_PLACE_ID
+        ? `https://search.google.com/local/writereview?placeid=${process.env.NEXT_PUBLIC_GOOGLE_PLACE_ID}`
+        : ''
 };
 
 export interface GoogleReview {
@@ -39,7 +42,7 @@ export interface PlaceDetails {
 export async function fetchGoogleReviews(): Promise<PlaceDetails | null> {
     const { placeId, apiKey } = GOOGLE_PLACES_CONFIG;
 
-    if (!apiKey || apiKey === '' || placeId === 'YOUR_PLACE_ID') {
+    if (!apiKey || !placeId) {
         console.log('Google Places API not configured. Using fallback data.');
         return null;
     }
