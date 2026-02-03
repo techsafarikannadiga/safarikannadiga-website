@@ -130,26 +130,53 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (for admin database write access) |
+
+---
+
+## 🛠️ Database Schema Update
+
+If you are setting this up for the first time or updating, run the SQL scripts in your Supabase SQL Editor:
+
+1. `scripts/supabase-setup.sql` - Core gallery tables (`gallery_locations`, `gallery_covers`)
+2. `scripts/supabase-tours-testimonials.sql` - Tours and Testimonials tables (`upcoming_tours`, `testimonials`)
+
+---
+
 ## 🎛️ Admin Panel Usage
 
-Access the admin panel at `/admin`:
+Access the admin panel at `/admin` (password: `adminpass`). The panel is now divided into three main tabs:
 
-### Upload Photos
+### 1. 🦁 Tours Management
+- **View All Tours**: See status (Upcoming, Sold Out, Completed) and spots left.
+- **Add Tour**: Create new safari packages with dates, spots, highlights, and images.
+- **Manage Status**: Mark tours as completed or sold out with one click.
+- **Featured**: Toggle "Featured" status to show/hide on the homepage.
+
+### 2. 💬 Testimonials Management
+- **Review Submissions**: See new testimonials submitted by users.
+- **Approve/Reject**: Moderate content before it goes live on the website.
+- **Photo Gallery**: View user-uploaded photos (automatically compressed).
+- **Manage**: Delete inappropriate or spam submissions.
+
+### 3. 📷 Gallery Management
+#### Upload Photos
 1. Select continent and location
 2. Drag & drop images (auto-compressed to ~500KB)
 3. Images appear in gallery immediately
 
-### Manage Locations
+#### Manage Locations
 1. Click "Manage Locations"
 2. Add new locations with continent, name, country
 3. Edit existing location descriptions and wildlife
 
-### Set Cover Photos
+#### Set Cover Photos
 1. Click any image thumbnail
 2. Select "Set as Cover Photo"
 3. Cover appears on gallery cards
 
-### Edit Location Info
+#### Edit Location Info
 1. Click "Edit Info" button on any location
 2. Update description, wildlife list, country
 3. Save changes
