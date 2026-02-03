@@ -2,33 +2,26 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Container } from '@/components/ui/Container';
 import { normalizeImageUrl } from '@/lib/image-utils';
+import { getFeaturedTours, Tour } from '@/lib/tours';
 
-interface UpcomingTour {
-    title: string;
-    destination: string;
-    startDate: string;
-    endDate: string;
-    spotsLeft: number;
-    totalSpots: number;
-    image: string;
-    highlights: string[];
-    status?: 'upcoming' | 'completed' | 'sold-out';
-    link?: string;
-}
-
-// Upcoming tours data - dates only, no pricing
-const upcomingTours: UpcomingTour[] = [
+// Fallback tour data for when database is empty
+const fallbackTours: Tour[] = [
     {
+        id: 'fallback-1',
         title: "Explore Bandhavgarh & Kanha",
         destination: "Madhya Pradesh, India",
-        startDate: "2025-02-20",
-        endDate: "2025-02-28",
-        spotsLeft: 0,
-        totalSpots: 12,
-        image: "/images/placeholder-safari.jpg",
+        start_date: "2025-02-20",
+        end_date: "2025-02-28",
+        spots_left: 0,
+        spots_total: 12,
+        image_url: "/images/placeholder-safari.jpg",
+        brochure_url: null,
         highlights: ["12 Premium Safaris", "Tiger & Leopard Sightings", "Luxury Accommodation"],
+        description: null,
         status: 'completed',
-        link: 'https://www.safarikannadiga.com/upcomingtours/feb-bandhavgarh'
+        featured: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     }
 ];
 
@@ -41,7 +34,15 @@ function formatYear(dateStr: string) {
     return new Date(dateStr).getFullYear();
 }
 
-export function UpcomingTours() {
+export async function UpcomingTours() {
+    // Fetch tours from database
+    let tours = await getFeaturedTours();
+
+    // Use fallback if no tours found
+    if (tours.length === 0) {
+        tours = fallbackTours;
+    }
+
     return (
         <section className="section-padding bg-[#2D5016] text-white">
             <Container>
@@ -62,12 +63,12 @@ export function UpcomingTours() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {upcomingTours.map((tour, index) => (
-                        <div key={index} className={`bg-white/10 backdrop-blur-sm rounded-card overflow-hidden transition-all duration-300 group ${tour.status === 'completed' ? 'opacity-80 grayscale hover:grayscale-0' : 'hover:bg-white/15'}`}>
+                    {tours.map((tour) => (
+                        <div key={tour.id} className={`bg-white/10 backdrop-blur-sm rounded-card overflow-hidden transition-all duration-300 group ${tour.status === 'completed' ? 'opacity-80 grayscale hover:grayscale-0' : 'hover:bg-white/15'}`}>
                             {/* Image */}
                             <div className="relative h-48 overflow-hidden">
                                 <Image
-                                    src={normalizeImageUrl(tour.image)}
+                                    src={normalizeImageUrl(tour.image_url || '/images/placeholder-safari.jpg')}
                                     alt={tour.title}
                                     fill
                                     className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -77,11 +78,15 @@ export function UpcomingTours() {
                                 {/* Status Badge */}
                                 <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-bold shadow-sm ${tour.status === 'completed'
                                     ? 'bg-neutral-gray text-white'
-                                    : tour.spotsLeft <= 2
+                                    : tour.status === 'sold-out'
                                         ? 'bg-red-500 text-white'
-                                        : 'bg-safari-gold text-white'
+                                        : tour.spots_left <= 2
+                                            ? 'bg-red-500 text-white'
+                                            : 'bg-safari-gold text-white'
                                     }`}>
-                                    {tour.status === 'completed' ? 'Completed' : (tour.spotsLeft <= 2 ? 'Almost Full!' : `${tour.spotsLeft} spots left`)}
+                                    {tour.status === 'completed' ? 'Completed' :
+                                        tour.status === 'sold-out' ? 'Sold Out' :
+                                            (tour.spots_left <= 2 ? 'Almost Full!' : `${tour.spots_left} spots left`)}
                                 </div>
                             </div>
 
@@ -93,7 +98,7 @@ export function UpcomingTours() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <span className="text-sm">
-                                        {formatDate(tour.startDate)} - {formatDate(tour.endDate)}, {formatYear(tour.startDate)}
+                                        {formatDate(tour.start_date)} - {formatDate(tour.end_date)}, {formatYear(tour.start_date)}
                                     </span>
                                 </div>
 
@@ -115,9 +120,9 @@ export function UpcomingTours() {
                                 </ul>
 
                                 {/* CTA */}
-                                {tour.status === 'completed' ? (
+                                {tour.status === 'completed' || tour.status === 'sold-out' ? (
                                     <div className="w-full bg-white/10 text-white/60 py-3 rounded-full font-bold text-center block cursor-not-allowed">
-                                        Tour Completed
+                                        {tour.status === 'completed' ? 'Tour Completed' : 'Sold Out'}
                                     </div>
                                 ) : (
                                     <Link

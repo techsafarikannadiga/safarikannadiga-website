@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Container } from '@/components/ui/Container';
 import { useForm } from 'react-hook-form';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface ExperienceFormData {
     name: string;
@@ -14,7 +15,6 @@ interface ExperienceFormData {
     rating: number;
     highlights: string;
     story: string;
-    photos: FileList | null;
     consent: boolean;
 }
 
@@ -23,6 +23,10 @@ export default function ShareExperiencePage() {
     const [rating, setRating] = useState(0);
     const [hoverRating, setHoverRating] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState('');
+    const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+    const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { register, handleSubmit, formState: { errors }, setValue } = useForm<ExperienceFormData>();
 
@@ -34,8 +38,46 @@ export default function ShareExperiencePage() {
         'Bandipur, Karnataka',
         'Ranthambore, Rajasthan',
         'Bandhavgarh, Madhya Pradesh',
+        'Kanha, Madhya Pradesh',
+        'Jim Corbett, Uttarakhand',
         'Other'
     ];
+
+    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length + selectedPhotos.length > 5) {
+            alert('Maximum 5 photos allowed');
+            return;
+        }
+
+        const validFiles = files.filter(file => {
+            if (!file.type.startsWith('image/')) {
+                alert(`${file.name} is not an image file`);
+                return false;
+            }
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit per file
+                alert(`${file.name} is too large (max 10MB per photo)`);
+                return false;
+            }
+            return true;
+        });
+
+        setSelectedPhotos(prev => [...prev, ...validFiles]);
+
+        // Create preview URLs
+        validFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreviewUrls(prev => [...prev, reader.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const removePhoto = (index: number) => {
+        setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
+        setPhotoPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    };
 
     const onSubmit = async (data: ExperienceFormData) => {
         if (!rating) {
@@ -43,23 +85,43 @@ export default function ShareExperiencePage() {
             return;
         }
         setIsSubmitting(true);
+        setUploadProgress('Preparing submission...');
+
         try {
-            const res = await fetch('/api/send', {
+            const formData = new FormData();
+            formData.append('name', data.name);
+            formData.append('email', data.email);
+            formData.append('safari', data.safari);
+            formData.append('visit_date', data.visitDate || '');
+            formData.append('rating', rating.toString());
+            formData.append('story', data.story);
+            formData.append('highlights', data.highlights || '');
+
+            // Add photos
+            if (selectedPhotos.length > 0) {
+                setUploadProgress(`Uploading ${selectedPhotos.length} photo(s)...`);
+                selectedPhotos.forEach((photo, i) => {
+                    formData.append(`photo_${i}`, photo);
+                });
+            }
+
+            const res = await fetch('/api/testimonials', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...data, rating, type: 'experience' }),
+                body: formData,
             });
 
             if (res.ok) {
                 setSubmitted(true);
             } else {
-                throw new Error('Failed to send');
+                const result = await res.json();
+                throw new Error(result.error || 'Failed to submit');
             }
         } catch (error) {
             console.error(error);
             alert("Failed to submit. Please try again or email us directly.");
         } finally {
             setIsSubmitting(false);
+            setUploadProgress('');
         }
     };
 
@@ -75,16 +137,21 @@ export default function ShareExperiencePage() {
                         </div>
                         <h1 className="text-display mb-4">Thank You for Sharing!</h1>
                         <p className="text-neutral-gray text-lg mb-8">
-                            Your safari story has been received. We love hearing about your adventures
-                            and may feature your experience on our website.
+                            Your safari story has been received and is pending review. We love hearing about your adventures
+                            and will feature your experience on our website once approved.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Link
-                                href="/contact"
+                            <button
+                                onClick={() => {
+                                    setSubmitted(false);
+                                    setRating(0);
+                                    setSelectedPhotos([]);
+                                    setPhotoPreviewUrls([]);
+                                }}
                                 className="btn-primary"
                             >
                                 Share Another Experience
-                            </Link>
+                            </button>
                             <Link href="/" className="btn-outline">
                                 Back to Home
                             </Link>
@@ -139,6 +206,7 @@ export default function ShareExperiencePage() {
                                             errors.email ? "border-red-400" : "border-transparent focus:border-safari-gold"
                                         )}
                                     />
+                                    <p className="text-xs text-neutral-gray mt-1">Your email won't be published</p>
                                 </div>
                             </div>
 
@@ -232,6 +300,59 @@ export default function ShareExperiencePage() {
                                 <p className="text-xs text-neutral-gray mt-1">Minimum 50 characters</p>
                             </div>
 
+                            {/* Photo Upload Section */}
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">
+                                    Share Your Photos (Optional)
+                                </label>
+                                <p className="text-sm text-neutral-gray mb-4">
+                                    Upload up to 5 wildlife photos from your safari (max 10MB each).
+                                    Images will be automatically optimized.
+                                </p>
+
+                                {/* Photo Previews */}
+                                {photoPreviewUrls.length > 0 && (
+                                    <div className="flex flex-wrap gap-3 mb-4">
+                                        {photoPreviewUrls.map((url, index) => (
+                                            <div key={index} className="relative group">
+                                                <div className="w-24 h-24 rounded-lg overflow-hidden relative">
+                                                    <Image src={url} alt={`Preview ${index + 1}`} fill className="object-cover" />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePhoto(index)}
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {selectedPhotos.length < 5 && (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-safari-gold hover:bg-safari-gold/5 transition-all"
+                                    >
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handlePhotoSelect}
+                                            className="hidden"
+                                        />
+                                        <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="text-sm text-neutral-gray">
+                                            Click to upload photos ({5 - selectedPhotos.length} remaining)
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="flex items-start gap-3">
                                 <input
                                     type="checkbox"
@@ -240,14 +361,26 @@ export default function ShareExperiencePage() {
                                     className="mt-1 w-5 h-5 rounded border-neutral-gray text-safari-gold focus:ring-safari-gold"
                                 />
                                 <label htmlFor="consent" className="text-sm text-neutral-gray">
-                                    I agree that SafariKannadiga may use my story and name on their website
+                                    I agree that SafariKannadiga may use my story, photos, and name on their website
                                     and marketing materials. *
                                 </label>
                             </div>
 
+                            {uploadProgress && (
+                                <div className="bg-safari-gold/10 border border-safari-gold rounded-lg p-4 text-center">
+                                    <div className="flex items-center justify-center gap-2 text-safari-gold font-semibold">
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        {uploadProgress}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex flex-col sm:flex-row gap-4 pt-4">
                                 <button type="submit" disabled={isSubmitting} className="btn-primary flex-1 py-4 text-lg disabled:opacity-70 disabled:cursor-not-allowed">
-                                    {isSubmitting ? 'Sending...' : 'Share My Experience'}
+                                    {isSubmitting ? 'Submitting...' : 'Share My Experience'}
                                 </button>
                                 <Link
                                     href="/gallery"
