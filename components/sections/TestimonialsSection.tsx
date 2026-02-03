@@ -123,7 +123,7 @@ export async function TestimonialsSection() {
                     </Link>
                 </div>
 
-                {/* User Testimonials from Database */}
+                {/* User Testimonials from Database - Rebuild Trigger */}
                 {testimonials.length > 0 && (
                     <>
                         <TestimonialsGrid testimonials={testimonials} />

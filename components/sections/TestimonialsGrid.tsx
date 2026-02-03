@@ -63,6 +63,7 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
                                 )}
                             </div>
                             <div>
+                                {/* Name and Source */}
                                 <h4 className="font-bold text-sm text-neutral-charcoal flex items-center gap-2">
                                     {testimonial.name}
                                     {testimonial.source === 'google' && (
