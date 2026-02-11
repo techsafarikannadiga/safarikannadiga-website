@@ -24,7 +24,11 @@ CREATE POLICY "Likes are viewable by everyone" ON image_likes
 -- Functions
 -- RPC to get like counts for a list of images - efficient batching
 CREATE OR REPLACE FUNCTION get_likes_counts(paths TEXT[])
-RETURNS TABLE (image_path TEXT, count BIGINT) AS $$
+RETURNS TABLE (image_path TEXT, count BIGINT) 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT il.image_path, COUNT(*) as count
@@ -32,4 +36,4 @@ BEGIN
     WHERE il.image_path = ANY(paths)
     GROUP BY il.image_path;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;

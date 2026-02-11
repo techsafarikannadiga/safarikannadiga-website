@@ -61,12 +61,36 @@ export async function POST(request: Request) {
         }
 
         const data = await resend.emails.send({
-            from: 'Safari Kannadiga <onboarding@resend.dev>',
-            to: ['samarthv080@Gmail.com'],
+            from: 'Safari Kannadiga <hello@safarikannadiga.com>',
+            to: ['Safarikannadiga@gmail.com'],
             subject: subject,
             html: htmlContent,
             replyTo: email,
         });
+
+        // Send confirmation email to the user for newsletter subscriptions
+        if (type === 'newsletter') {
+            await resend.emails.send({
+                from: 'Safari Kannadiga <hello@safarikannadiga.com>',
+                to: [email],
+                subject: 'Welcome to Safari Kannadiga Community!',
+                html: `
+                    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #c28e00;">Welcome to Safari Kannadiga!</h2>
+                        <p>Hello,</p>
+                        <p>Thank you for subscribing to our newsletter! We're thrilled to have you join our community of wildlife enthusiasts.</p>
+                        <p>You'll be the first to know about:</p>
+                        <ul>
+                            <li>Upcoming safari tours and expeditions</li>
+                            <li>Exclusive wildlife photography tips</li>
+                            <li>Stories from the wild</li>
+                        </ul>
+                        <p>Stay wild,</p>
+                        <p><strong>The Safari Kannadiga Team</strong></p>
+                    </div>
+                `,
+            });
+        }
 
         return NextResponse.json(data);
     } catch (error) {

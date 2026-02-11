@@ -27,14 +27,15 @@ CREATE POLICY "Allow public read access" ON gallery_locations
     FOR SELECT USING (true);
 
 -- Allow authenticated write access (or use anon for simpler setup)
-CREATE POLICY "Allow anon insert" ON gallery_locations
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anon delete" ON gallery_locations
-    FOR DELETE USING (true);
-
-CREATE POLICY "Allow anon update" ON gallery_locations
-    FOR UPDATE USING (true);
+-- INSECURE: Creating permissive policies (commented out due to security warnings)
+-- CREATE POLICY "Allow anon insert" ON gallery_locations
+--     FOR INSERT WITH CHECK (true);
+-- 
+-- CREATE POLICY "Allow anon delete" ON gallery_locations
+--     FOR DELETE USING (true);
+-- 
+-- CREATE POLICY "Allow anon update" ON gallery_locations
+--     FOR UPDATE USING (true);
 
 -- ============================================================================
 -- Gallery Covers Table
@@ -54,14 +55,15 @@ CREATE POLICY "Allow public read access" ON gallery_covers
     FOR SELECT USING (true);
 
 -- Allow authenticated write access
-CREATE POLICY "Allow anon insert" ON gallery_covers
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anon delete" ON gallery_covers
-    FOR DELETE USING (true);
-
-CREATE POLICY "Allow anon update" ON gallery_covers
-    FOR UPDATE USING (true);
+-- INSECURE: Creating permissive policies (commented out due to security warnings)
+-- CREATE POLICY "Allow anon insert" ON gallery_covers
+--     FOR INSERT WITH CHECK (true);
+-- 
+-- CREATE POLICY "Allow anon delete" ON gallery_covers
+--     FOR DELETE USING (true);
+-- 
+-- CREATE POLICY "Allow anon update" ON gallery_covers
+--     FOR UPDATE USING (true);
 
 -- ============================================================================
 -- Seed Initial Data (Africa Locations)
