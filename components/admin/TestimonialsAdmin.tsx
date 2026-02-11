@@ -254,7 +254,7 @@ export function TestimonialsAdmin() {
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-full bg-safari-gold/20 flex items-center justify-center font-bold text-2xl text-safari-gold overflow-hidden relative">
                                     {selectedTestimonial.avatar_url ? (
-                                        <Image src={selectedTestimonial.avatar_url} alt={selectedTestimonial.name} fill className="object-cover" />
+                                        <Image src={selectedTestimonial.avatar_url} alt={selectedTestimonial.name} fill className="object-cover" sizes="64px" />
                                     ) : (
                                         selectedTestimonial.name.charAt(0).toUpperCase()
                                     )}
@@ -330,7 +330,7 @@ export function TestimonialsAdmin() {
                                                 rel="noopener noreferrer"
                                                 className="aspect-square relative rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
                                             >
-                                                <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" />
+                                                <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 200px" />
                                             </a>
                                         ))}
                                     </div>

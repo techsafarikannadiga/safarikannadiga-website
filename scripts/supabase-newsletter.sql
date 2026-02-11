@@ -9,9 +9,14 @@ CREATE TABLE IF NOT EXISTS subscribers (
 -- RLS
 ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
 
--- Allow insert by anon (public subscription)
+-- Allow insert by anon (public subscription) with basic validation
 CREATE POLICY "Public can subscribe" ON subscribers
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT 
+    WITH CHECK (
+        email IS NOT NULL AND 
+        length(email) > 5 AND 
+        email LIKE '%@%'
+    );
 
 -- Only admin can view
 -- (We'll use service role key in API)

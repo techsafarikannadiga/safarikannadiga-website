@@ -35,8 +35,8 @@ export function Preloader() {
         // Show particles only after hydration (avoids mismatch)
         setShowParticles(true);
 
-        const fadeTimer = setTimeout(() => setIsFadingOut(true), 2200);
-        const removeTimer = setTimeout(() => setIsGone(true), 2900);
+        const fadeTimer = setTimeout(() => setIsFadingOut(true), 1000);
+        const removeTimer = setTimeout(() => setIsGone(true), 1600);
         return () => {
             clearTimeout(fadeTimer);
             clearTimeout(removeTimer);

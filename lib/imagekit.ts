@@ -25,12 +25,17 @@
  * @author Samarth V (samarthv.me)
  */
 
-import ImageKit, { toFile } from '@imagekit/nodejs';
+import ImageKit from '@imagekit/nodejs';
 
 // Initialize ImageKit client
 const imagekit = new ImageKit({
     privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
+    // @ts-ignore - urlEndpoint is required for SDK to work but missing in types
+    urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/safarikannadiga',
 });
+
+
+
 
 // URL endpoint for building image URLs
 const URL_ENDPOINT = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/safarikannadiga';
@@ -64,19 +69,19 @@ export function buildImageUrl(
 
     // Clean up the path
     let cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-    
+
     // Build transformation string
     const transforms: string[] = [];
     if (options?.width) transforms.push(`w-${options.width}`);
     if (options?.height) transforms.push(`h-${options.height}`);
     if (options?.quality) transforms.push(`q-${options.quality}`);
     if (options?.format && options.format !== 'auto') transforms.push(`f-${options.format}`);
-    
+
     // ImageKit URL format: https://ik.imagekit.io/account_id/tr:transformations/path
     if (transforms.length > 0) {
         return `${URL_ENDPOINT}/tr:${transforms.join(',')}${cleanPath}`;
     }
-    
+
     return `${URL_ENDPOINT}${cleanPath}`;
 }
 
@@ -119,7 +124,7 @@ export async function listFiles(folderPath: string): Promise<ImageKitFile[]> {
     try {
         // Ensure path starts with /
         const path = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
-        
+
         const response = await imagekit.assets.list({
             path: path,
         });
@@ -160,15 +165,14 @@ export async function uploadFile(
     }
 
     try {
-        // Convert to proper format using toFile helper
+        // Convert to proper format
         const buffer = Buffer.isBuffer(file) ? file : Buffer.from(file);
-        const uploadableFile = await toFile(buffer, fileName);
-        
+
         // Ensure folder path starts with /
         const folderPath = folder.startsWith('/') ? folder : `/${folder}`;
 
         const response = await imagekit.files.upload({
-            file: uploadableFile,
+            file: buffer.toString('base64'),
             fileName: fileName,
             folder: folderPath,
             useUniqueFileName: false,
@@ -182,9 +186,9 @@ export async function uploadFile(
         };
     } catch (error: any) {
         console.error('Error uploading to ImageKit:', error);
-        return { 
-            success: false, 
-            error: error?.message || 'Failed to upload image' 
+        return {
+            success: false,
+            error: error?.message || 'Failed to upload image'
         };
     }
 }
@@ -202,9 +206,9 @@ export async function deleteFile(fileId: string): Promise<{ success: boolean; er
         return { success: true };
     } catch (error: any) {
         console.error('Error deleting from ImageKit:', error);
-        return { 
-            success: false, 
-            error: error?.message || 'Failed to delete image' 
+        return {
+            success: false,
+            error: error?.message || 'Failed to delete image'
         };
     }
 }
@@ -213,7 +217,7 @@ export async function deleteFile(fileId: string): Promise<{ success: boolean; er
  * Create a folder in ImageKit
  */
 export async function createFolder(
-    folderName: string, 
+    folderName: string,
     parentPath: string = '/'
 ): Promise<{ success: boolean; error?: string }> {
     if (!isImageKitConfigured()) {
@@ -232,9 +236,9 @@ export async function createFolder(
             return { success: true };
         }
         console.error('Error creating folder:', error);
-        return { 
-            success: false, 
-            error: error?.message || 'Failed to create folder' 
+        return {
+            success: false,
+            error: error?.message || 'Failed to create folder'
         };
     }
 }
@@ -250,12 +254,12 @@ export async function deleteFolder(folderPath: string): Promise<{ success: boole
     try {
         // First, list all files in the folder
         const files = await listFiles(folderPath);
-        
+
         // Delete all files
         for (const file of files) {
             await deleteFile(file.fileId);
         }
-        
+
         // Delete the folder (ignore 404 if folder doesn't exist)
         try {
             await imagekit.folders.delete({
@@ -267,13 +271,13 @@ export async function deleteFolder(folderPath: string): Promise<{ success: boole
                 throw folderError;
             }
         }
-        
+
         return { success: true };
     } catch (error: any) {
         console.error('Error deleting folder:', error);
-        return { 
-            success: false, 
-            error: error?.message || 'Failed to delete folder' 
+        return {
+            success: false,
+            error: error?.message || 'Failed to delete folder'
         };
     }
 }

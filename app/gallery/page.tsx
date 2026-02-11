@@ -9,7 +9,9 @@ export const metadata: Metadata = {
     description: 'Browse stunning wildlife photography from SafariKannadiga expeditions across Africa and Asia. Lions, tigers, elephants, and more.',
 };
 
+// Use dynamic rendering for immediate reflection of admin changes
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function GalleryPage() {
     const continents = await getContinents();

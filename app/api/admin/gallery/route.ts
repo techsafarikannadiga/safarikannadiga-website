@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { 
-    getFullGalleryStructure, 
-    saveImage, 
+import { revalidatePath } from 'next/cache';
+import {
+    getFullGalleryStructure,
+    saveImage,
     deleteImage,
     setCoverPhoto
 } from '@/lib/gallery-cloud';
@@ -30,9 +31,11 @@ export async function POST(req: Request) {
         }
 
         const result = await saveImage(continent, location, file);
-        
+
         if (result.success) {
-            return NextResponse.json({ success: true, path: result.path });
+            revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
+            return NextResponse.json({ success: true, path: result.path, url: result.url });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
@@ -46,14 +49,16 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
     try {
         const { imagePath } = await req.json();
-        
+
         if (!imagePath) {
             return NextResponse.json({ error: 'Missing image path' }, { status: 400 });
         }
 
         const result = await deleteImage(imagePath);
-        
+
         if (result.success) {
+            revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 404 });
@@ -68,14 +73,17 @@ export async function DELETE(req: Request) {
 export async function PATCH(req: Request) {
     try {
         const { continent, location, imagePath } = await req.json();
-        
-        if (!continent || !location || !imagePath) {
+
+        if (!continent || !imagePath) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const result = await setCoverPhoto(continent, location, imagePath);
-        
+        const result = await setCoverPhoto(continent, imagePath, location);
+
         if (result.success) {
+            // Revalidate everything for immediate reflection
+            revalidatePath('/', 'layout');
+
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

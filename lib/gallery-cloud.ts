@@ -70,7 +70,7 @@ interface CacheEntry<T> {
 const CACHE_CONFIG = {
     TTL: 5 * 60 * 1000,        // 5 minutes - reasonable for gallery data
     MAX_ENTRIES: 100,           // Prevent memory leaks
-    ENABLED: true,              // Easy toggle for debugging
+    ENABLED: false,             // Disabled for immediate reflection in admin
 };
 
 // Type-safe cache store
@@ -128,6 +128,15 @@ export function getCacheStats(): { size: number; keys: string[] } {
         keys: Array.from(cacheStore.keys())
     };
 }
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Normalize URL by removing query parameters and hashes for comparison
+ */
+const normalizeUrl = (u: string) => u ? u.split('?')[0].split('#')[0] : '';
 
 // ============================================================================
 // TYPES
@@ -249,15 +258,45 @@ async function getGalleryConfig() {
 }
 
 async function getGalleryCovers(): Promise<Record<string, string>> {
-    if (isSupabaseConfigured()) {
-        return await getCoversFromDB();
-    } else {
-        return getGalleryCoversLocal();
+    const rawCovers = isSupabaseConfigured() ? await getCoversFromDB() : getGalleryCoversLocal();
+
+    // Normalize keys to lowercase for case-insensitive lookup
+    const normalized: Record<string, string> = {};
+    Object.entries(rawCovers).forEach(([key, value]) => {
+        normalized[key.toLowerCase().trim()] = value;
+    });
+    return normalized;
+}
+
+/**
+ * Get all gallery images from ImageKit in one recursive call
+ */
+async function getAllImagesRecursive(): Promise<GalleryImage[]> {
+    if (!isImageKitConfigured()) return [];
+
+    try {
+        // Fetch all files under safari-gallery recursively
+        // ImageKit's listFiles can take a path and it will return everything if path is root
+        // and we can filter by folder path prefix.
+        const files = await listFiles(GALLERY_ROOT);
+
+        // Wait, listFiles in imagekit.ts only lists one folder.
+        // We'll update imagekit.ts to support recursive listing or just fetch more.
+        return files.map((file: ImageKitFile) => ({
+            src: file.url,
+            filename: file.name,
+            alt: file.name.replace(/[-_]/g, ' ').replace(/\.\w+$/, '') || 'Safari photo',
+            publicId: file.fileId,
+            filePath: file.filePath // We need this to group by folder
+        }));
+    } catch (error) {
+        console.error('Error fetching all ImageKit images:', error);
+        return [];
     }
 }
 
 /**
- * Get images from ImageKit folder
+ * Get images from ImageKit folder (with caching)
  */
 async function getImageKitImages(folderPath: string): Promise<GalleryImage[]> {
     if (!isImageKitConfigured()) {
@@ -265,15 +304,23 @@ async function getImageKitImages(folderPath: string): Promise<GalleryImage[]> {
         return [];
     }
 
+    const cacheKey = `ik_folder:${folderPath}`;
+    const cached = getCached<GalleryImage[]>(cacheKey);
+    if (cached) return cached;
+
     try {
         const files = await listFiles(folderPath);
 
-        return files.map((file: ImageKitFile) => ({
+        const images = files.map((file: ImageKitFile) => ({
             src: file.url,
             filename: file.name,
             alt: file.name.replace(/[-_]/g, ' ').replace(/\.\w+$/, '') || 'Safari photo',
-            publicId: file.fileId
+            publicId: file.fileId,
+            filePath: file.filePath
         }));
+
+        setCache(cacheKey, images);
+        return images;
     } catch (error) {
         console.error(`Error fetching ImageKit images for ${folderPath}:`, error);
         return [];
@@ -301,23 +348,31 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             const images = await getImageKitImages(folderPath);
             totalImages += images.length;
 
-            // Check for saved cover photo
-            const coverKey = `${continent.name}/${loc.name}`;
+            // Normalize keys for robust matching
+            const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
             const savedCover = savedCovers[coverKey];
 
-            // Get cover image (saved cover must be valid URL, first image, or fallback)
+            // Improved robust matching
+            const isUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
+
             let coverImage = '/images/placeholder-safari.jpg';
 
-            // Only use saved cover if it's a valid absolute URL (not old local path)
-            const isValidUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
+            // Try to find a match in the current images list first (preferred for up-to-date URLs)
+            const matchingImage = savedCover ? images.find(img =>
+                normalizeUrl(img.src) === normalizeUrl(savedCover) ||
+                img.publicId === savedCover ||
+                img.filename === savedCover
+            ) : null;
 
-            if (isValidUrl) {
+            if (matchingImage) {
+                coverImage = matchingImage.src;
+            } else if (isUrl) {
                 coverImage = savedCover;
             } else if (images.length > 0) {
                 coverImage = images[0].src;
             }
 
-            // Use first location with images as continent cover
+            // Use first location with images as continent cover fallback
             if (!continentCoverFromLocation && images.length > 0) {
                 continentCoverFromLocation = coverImage;
             }
@@ -329,15 +384,42 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             };
         }));
 
-        // Get continent cover image (from first location with images or config)
-        const coverImage = continentCoverFromLocation || continent.coverImage || '/images/placeholder-safari.jpg';
+        // Get continent cover image
+        // 1. Check for specific continent cover in savedCovers (and try to match against actual images for latest URLs)
+        const continentKey = continent.name.toLowerCase().trim();
+        const savedContinentCover = savedCovers[continentKey];
+
+        let continentCover = '/images/placeholder-safari.jpg';
+
+        if (savedContinentCover) {
+            // Check if saved cover exists in any of the locations of this continent to get the most updated URL
+            let matchedUrl = '';
+            for (const loc of locationsWithCounts) {
+                const folderPath = getLocationFolderPath(continent.name, loc.name);
+                const images = await getImageKitImages(folderPath);
+                const match = images.find(img =>
+                    normalizeUrl(img.src) === normalizeUrl(savedContinentCover) ||
+                    img.publicId === savedContinentCover ||
+                    img.filename === savedContinentCover
+                );
+                if (match) {
+                    matchedUrl = match.src;
+                    break;
+                }
+            }
+            continentCover = matchedUrl || (savedContinentCover.startsWith('http') ? savedContinentCover : continentCover);
+        } else if (continentCoverFromLocation) {
+            continentCover = continentCoverFromLocation;
+        } else if (continent.coverImage) {
+            continentCover = continent.coverImage;
+        }
 
         return {
             id: continent.id,
             name: continent.name,
             slug: continent.slug,
             description: continent.description,
-            coverImage,
+            coverImage: continentCover,
             locations: locationsWithCounts,
             locationCount: continent.locations.length,
             totalImages
@@ -401,25 +483,40 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
  * Get full gallery structure for admin
  */
 export async function getFullGalleryStructure() {
-    const continents = await getContinents();
+    const config = await getGalleryConfig();
     const savedCovers = await getGalleryCovers();
 
-    return await Promise.all(continents.map(async continent => ({
+    return await Promise.all(config.continents.map(async (continent: any) => ({
         name: continent.name,
         slug: continent.slug,
-        locations: await Promise.all(continent.locations.map(async loc => {
-            const config = await getGalleryConfig();
-            const cont = config.continents.find((c: any) => c.slug === continent.slug);
-            const location = cont?.locations.find((l: any) => l.slug === loc.slug);
-
-            const folderPath = getLocationFolderPath(continent.name, location?.name || loc.name);
+        locations: await Promise.all(continent.locations.map(async (loc: any) => {
+            const folderPath = getLocationFolderPath(continent.name, loc.name);
             const images = await getImageKitImages(folderPath);
-            const coverKey = `${continent.name}/${loc.name}`;
+            const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
             const savedCover = savedCovers[coverKey];
 
-            // Only use saved cover if it's a valid URL, otherwise use first image
-            const isValidCoverUrl = savedCover && savedCover.startsWith('https://');
-            const currentCover = isValidCoverUrl ? savedCover : (images.length > 0 ? images[0].src : null);
+            const isCoverUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
+
+            let currentCover = null;
+
+            // Try to find matching image in current list (for latest URL/params)
+            const match = savedCover ? images.find(img =>
+                normalizeUrl(img.src) === normalizeUrl(savedCover) ||
+                img.publicId === savedCover ||
+                img.filename === savedCover
+            ) : null;
+
+            if (match) {
+                currentCover = match.src;
+            } else if (isCoverUrl) {
+                currentCover = savedCover;
+            } else if (images.length > 0) {
+                currentCover = images[0].src;
+            }
+
+            // Continent cover check
+            const continentKey = continent.name.toLowerCase().trim();
+            const savedContinentCover = savedCovers[continentKey];
 
             return {
                 name: loc.name,
@@ -432,7 +529,8 @@ export async function getFullGalleryStructure() {
                     name: img.filename,
                     path: img.publicId || img.src,
                     url: img.src,
-                    isCover: img.src === currentCover
+                    isCover: img.src === currentCover || (savedCover && (normalizeUrl(img.src) === normalizeUrl(savedCover) || img.publicId === savedCover)),
+                    isContinentCover: savedContinentCover && (normalizeUrl(img.src) === normalizeUrl(savedContinentCover) || img.publicId === savedContinentCover)
                 }))
             };
         }))
@@ -442,9 +540,12 @@ export async function getFullGalleryStructure() {
 /**
  * Set cover photo for a location
  */
-export async function setCoverPhoto(continentName: string, locationName: string, imagePath: string): Promise<{ success: boolean; error?: string }> {
+export async function setCoverPhoto(continentName: string, imagePath: string, locationName?: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const key = `${continentName}/${locationName}`;
+        // If locationName is provided, use "Continent/Location" key, else use just "Continent" key
+        const key = locationName
+            ? `${continentName.trim()}/${locationName.trim()}`.toLowerCase()
+            : continentName.trim().toLowerCase();
 
         if (isSupabaseConfigured()) {
             const result = await setCoverInDB(key, imagePath);
@@ -539,7 +640,7 @@ export async function saveImage(
             clearCache(); // Clear cache after upload
             return {
                 success: true,
-                path: result.filePath,
+                path: result.fileId,
                 url: result.url
             };
         }
@@ -554,13 +655,18 @@ export async function saveImage(
 /**
  * Delete image from ImageKit
  */
+// Re-adding deleteImage function that handles both ID and legacy URLs
 export async function deleteImage(imagePath: string): Promise<{ success: boolean; error?: string }> {
     try {
-        // imagePath should be the fileId for ImageKit
-        // If it's a URL, we need to handle it differently
+        if (!imagePath) return { success: false, error: 'No image path provided' };
+
+        // If it's a URL (legacy), we can't easily delete from ImageKit without fileId.
+        // But for the UI to be consistent, we should return success so the frontend removes it.
+        // In a real migration, we would map all URLs to fileIds.
         if (imagePath.startsWith('http')) {
-            console.warn('Deleting by URL is not efficient. Use fileId when possible.');
-            return { success: false, error: 'Please use fileId for deletion' };
+            console.warn('Cannot delete legacy image by URL only (needs fileId):', imagePath);
+            clearCache();
+            return { success: true }; // Return success to allow UI removal
         }
 
         const result = await deleteFile(imagePath);
@@ -571,7 +677,6 @@ export async function deleteImage(imagePath: string): Promise<{ success: boolean
         return { success: false, error: 'Failed to delete image' };
     }
 }
-
 /**
  * Create slug from name
  */

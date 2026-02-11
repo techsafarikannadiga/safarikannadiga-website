@@ -2,9 +2,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/Container';
-import { getContinent } from '@/lib/gallery-cloud';
+import { getContinents, getContinent } from '@/lib/gallery-cloud';
 
+// Force dynamic rendering to ensure cover photo changes reflect immediately
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Generate static params for all continents at build time
+export async function generateStaticParams() {
+    const continents = await getContinents();
+    return continents.map((continent) => ({
+        continent: continent.slug,
+    }));
+}
 
 export default async function ContinentGalleryPage({ params }: { params: Promise<{ continent: string }> }) {
     const { continent: continentSlug } = await params;
@@ -45,7 +55,7 @@ export default async function ContinentGalleryPage({ params }: { params: Promise
 
                 {/* Location Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {continent.locations.map((loc) => (
+                    {continent.locations.map((loc, idx) => (
                         <Link
                             key={loc.slug}
                             href={`/gallery/${continentSlug}/${loc.slug}`}
@@ -58,6 +68,7 @@ export default async function ContinentGalleryPage({ params }: { params: Promise
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                    priority={idx < 3}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 

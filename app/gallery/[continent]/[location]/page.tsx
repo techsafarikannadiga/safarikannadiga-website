@@ -2,10 +2,29 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/Container';
-import { getContinent, getLocation, getImages } from '@/lib/gallery-cloud';
+import { getContinents, getContinent, getLocation, getImages } from '@/lib/gallery-cloud';
 import GalleryLocationClient from '@/components/gallery/GalleryLocationClient';
 
+// Force dynamic rendering to ensure cover photo changes reflect immediately
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Generate static params for all locations at build time
+export async function generateStaticParams() {
+    const continents = await getContinents();
+    const params: { continent: string; location: string }[] = [];
+
+    continents.forEach((continent) => {
+        continent.locations.forEach((location) => {
+            params.push({
+                continent: continent.slug,
+                location: location.slug,
+            });
+        });
+    });
+
+    return params;
+}
 
 export default async function LocationGalleryPage({ params }: { params: Promise<{ continent: string; location: string }> }) {
     const { continent: continentSlug, location: locationSlug } = await params;
@@ -16,7 +35,7 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
     if (!continent || !location) return notFound();
 
     const images = await getImages(continentSlug, locationSlug);
-    const coverImage = images.length > 0 ? images[0].src : '/images/placeholder-safari.jpg';
+    const coverImage = location.coverImage || '/images/placeholder-safari.jpg';
 
     return (
         <section className="pt-32 pb-20 bg-neutral-cream min-h-screen">
@@ -80,6 +99,7 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
                             fill
                             className="object-cover"
                             sizes="(max-width: 1024px) 100vw, 50vw"
+                            priority
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     </div>

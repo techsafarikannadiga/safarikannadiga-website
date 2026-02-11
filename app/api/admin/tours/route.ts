@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import {
     getTours,
     createTour,
@@ -14,12 +15,13 @@ import { saveImage } from '@/lib/gallery-cloud';
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
-        const status = searchParams.get('status') as 'upcoming' | 'sold-out' | 'completed' | 'all' | null;
+        const status = searchParams.get('status') as 'upcoming' | 'sold-out' | 'completed' | 'draft' | 'all' | null;
         const featured = searchParams.get('featured');
 
         const tours = await getTours({
             status: status || 'all',
             featured: featured === 'true' ? true : featured === 'false' ? false : undefined,
+            includeDrafts: true,
         });
 
         return NextResponse.json(tours);
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
             spots_left: parseInt(formData.get('spots_left') as string) || 12,
             highlights: JSON.parse(formData.get('highlights') as string || '[]'),
             description: formData.get('description') as string || null,
-            status: (formData.get('status') as 'upcoming' | 'sold-out' | 'completed') || 'upcoming',
+            status: (formData.get('status') as 'upcoming' | 'sold-out' | 'completed' | 'draft') || 'upcoming',
             featured: formData.get('featured') === 'true',
             brochure_url: formData.get('brochure_url') as string || null,
         };
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
         const result = await createTour(tourData);
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true, tour: result.tour });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -97,7 +100,7 @@ export async function PUT(req: Request) {
         if (formData.has('spots_left')) updates.spots_left = parseInt(formData.get('spots_left') as string);
         if (formData.has('highlights')) updates.highlights = JSON.parse(formData.get('highlights') as string);
         if (formData.has('description')) updates.description = formData.get('description') as string;
-        if (formData.has('status')) updates.status = formData.get('status') as 'upcoming' | 'sold-out' | 'completed';
+        if (formData.has('status')) updates.status = formData.get('status') as 'upcoming' | 'sold-out' | 'completed' | 'draft';
         if (formData.has('featured')) updates.featured = formData.get('featured') === 'true';
         if (formData.has('brochure_url')) updates.brochure_url = formData.get('brochure_url') as string;
 
@@ -113,6 +116,7 @@ export async function PUT(req: Request) {
         const result = await updateTour(id, updates);
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -148,6 +152,7 @@ export async function PATCH(req: Request) {
         }
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -170,6 +175,7 @@ export async function DELETE(req: Request) {
         const result = await deleteTour(id);
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

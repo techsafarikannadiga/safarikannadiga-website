@@ -15,7 +15,7 @@ interface Tour {
     brochure_url: string | null;
     highlights: string[];
     description: string | null;
-    status: 'upcoming' | 'sold-out' | 'completed';
+    status: 'upcoming' | 'sold-out' | 'completed' | 'draft';
     featured: boolean;
     created_at: string;
 }
@@ -38,7 +38,7 @@ export function ToursAdmin() {
         highlights: '',
         description: '',
         brochure_url: '',
-        status: 'upcoming' as 'upcoming' | 'sold-out' | 'completed',
+        status: 'upcoming' as 'upcoming' | 'sold-out' | 'completed' | 'draft',
         featured: true,
     });
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -203,6 +203,7 @@ export function ToursAdmin() {
             case 'upcoming': return 'bg-green-100 text-green-800';
             case 'sold-out': return 'bg-yellow-100 text-yellow-800';
             case 'completed': return 'bg-gray-100 text-gray-800';
+            case 'draft': return 'bg-blue-50 text-blue-600 border border-blue-100';
             default: return 'bg-gray-100 text-gray-800';
         }
     };
@@ -256,7 +257,7 @@ export function ToursAdmin() {
                             {/* Image */}
                             <div className="w-32 h-24 relative rounded-lg overflow-hidden bg-gray-100 shrink-0">
                                 {tour.image_url ? (
-                                    <Image src={tour.image_url} alt={tour.title} fill className="object-cover" />
+                                    <Image src={tour.image_url!} alt={tour.title} fill className="object-cover" sizes="(max-width: 768px) 128px, 128px" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                                         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -447,6 +448,20 @@ export function ToursAdmin() {
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                                    <select
+                                        value={formData.status}
+                                        onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-safari-gold focus:border-transparent"
+                                    >
+                                        <option value="draft">Draft (Private)</option>
+                                        <option value="upcoming">Upcoming (Public)</option>
+                                        <option value="sold-out">Sold Out</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Highlights (comma separated)</label>
                                     <input
@@ -459,13 +474,16 @@ export function ToursAdmin() {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                        Description
+                                        <span className="ml-2 text-[10px] font-normal text-gray-400 italic">(Supports basic HTML/Markdown)</span>
+                                    </label>
                                     <textarea
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Detailed description of the tour..."
-                                        rows={3}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-safari-gold focus:border-transparent resize-none"
+                                        placeholder="Detailed tour itinerary or description..."
+                                        rows={6}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-safari-gold focus:border-transparent"
                                     />
                                 </div>
 
@@ -485,7 +503,7 @@ export function ToursAdmin() {
                                     <div className="flex items-center gap-4">
                                         {imagePreview && (
                                             <div className="w-24 h-24 relative rounded-lg overflow-hidden">
-                                                <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+                                                <Image src={imagePreview} alt="Preview" fill className="object-cover" sizes="96px" />
                                             </div>
                                         )}
                                         <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold text-gray-700 flex items-center gap-2">
@@ -541,8 +559,9 @@ export function ToursAdmin() {
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
-        </div>
+                </div >
+            )
+            }
+        </div >
     );
 }

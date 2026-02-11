@@ -65,10 +65,16 @@ ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "public_read_approved_testimonials" ON testimonials
     FOR SELECT USING (approved = true);
 
--- Public can submit testimonials (INSERT)
+-- Public can submit testimonials (INSERT) with basic validation
 -- We allow this via anon key so users can submit without authentication
 CREATE POLICY "public_submit_testimonials" ON testimonials
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT 
+    WITH CHECK (
+        length(name) >= 2 AND 
+        rating >= 1 AND 
+        rating <= 5 AND 
+        length(story) > 10
+    );
 
 -- Admin operations (UPDATE/DELETE) use service role (bypasses RLS)
 

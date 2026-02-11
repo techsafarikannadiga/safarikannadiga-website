@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import {
     getAllTestimonials,
     approveTestimonial,
@@ -31,6 +32,7 @@ export async function PATCH(req: Request) {
             : await unapproveTestimonial(id);
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -53,6 +55,7 @@ export async function DELETE(req: Request) {
         const result = await deleteTestimonial(id);
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -77,6 +80,7 @@ export async function POST(req: Request) {
         });
 
         if (result.success) {
+            revalidatePath('/');
             return NextResponse.json({ success: true, id: result.id });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

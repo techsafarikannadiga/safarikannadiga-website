@@ -42,7 +42,7 @@ export interface Tour {
     brochure_url: string | null;
     highlights: string[];
     description: string | null;
-    status: 'upcoming' | 'sold-out' | 'completed';
+    status: 'upcoming' | 'sold-out' | 'completed' | 'draft';
     featured: boolean;
     created_at: string;
     updated_at: string;
@@ -59,7 +59,7 @@ export interface TourInput {
     brochure_url?: string | null;
     highlights?: string[];
     description?: string | null;
-    status?: 'upcoming' | 'sold-out' | 'completed';
+    status?: 'upcoming' | 'sold-out' | 'completed' | 'draft';
     featured?: boolean;
 }
 
@@ -74,8 +74,9 @@ export function isToursConfigured(): boolean {
  * Get all tours (public)
  */
 export async function getTours(options?: {
-    status?: 'upcoming' | 'sold-out' | 'completed' | 'all';
+    status?: 'upcoming' | 'sold-out' | 'completed' | 'draft' | 'all';
     featured?: boolean;
+    includeDrafts?: boolean;
 }): Promise<Tour[]> {
     if (!supabase) return [];
 
@@ -86,6 +87,9 @@ export async function getTours(options?: {
 
     if (options?.status && options.status !== 'all') {
         query = query.eq('status', options.status);
+    } else if (!options?.includeDrafts) {
+        // Hide drafts by default if not explicitly requested
+        query = query.neq('status', 'draft');
     }
 
     if (options?.featured !== undefined) {
@@ -210,6 +214,7 @@ export async function getFeaturedTours(): Promise<Tour[]> {
         .from('upcoming_tours')
         .select('*')
         .eq('featured', true)
+        .neq('status', 'draft') // Never show drafts on homepage
         .limit(20); // Increased limit to ensure we get enough tours
 
     if (error) {

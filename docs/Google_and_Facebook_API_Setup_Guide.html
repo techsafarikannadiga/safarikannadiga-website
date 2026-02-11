@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google & Facebook API Setup Guide — SafariKannadiga</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f7f7f8; color: #1a1a1a; line-height: 1.7; }
+        .container { max-width: 720px; margin: 0 auto; padding: 20px; }
+
+        /* Header */
+        .header { text-align: center; padding: 48px 20px 32px; background: linear-gradient(135deg, #1a1a18 0%, #2d3a2a 100%); color: white; margin-bottom: 32px; border-radius: 0 0 24px 24px; }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header p { color: #D4A574; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
+        .header .subtitle { color: rgba(255,255,255,0.7); font-size: 15px; margin-top: 16px; text-transform: none; letter-spacing: 0; }
+
+        /* Section */
+        .section { background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .section-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+        .section-desc { color: #666; font-size: 14px; margin-bottom: 24px; }
+        .section-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .badge-google { background: #e8f0fe; color: #1a73e8; }
+        .badge-meta { background: #e7f0fd; color: #1877F2; }
+        .badge-required { background: #fef3e2; color: #b86e00; }
+
+        /* Steps */
+        .step { display: flex; gap: 16px; margin-bottom: 28px; position: relative; }
+        .step:last-child { margin-bottom: 0; }
+        .step-number { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+        .google .step-number { background: #e8f0fe; color: #1a73e8; }
+        .meta .step-number { background: #e7f0fd; color: #1877F2; }
+        .step-content { flex: 1; }
+        .step-content h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .step-content p, .step-content li { font-size: 14px; color: #444; }
+        .step-content ol, .step-content ul { padding-left: 20px; margin-top: 8px; }
+        .step-content li { margin-bottom: 6px; }
+
+        /* Links */
+        a { color: #1a73e8; text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+
+        /* URL boxes */
+        .url-box { background: #f0f4f9; border: 1px solid #dbe4f0; border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 13px; margin: 8px 0; word-break: break-all; color: #1a73e8; }
+        .meta .url-box { background: #f0f4fd; border-color: #d0ddf7; color: #1877F2; }
+
+        /* Key boxes */
+        .key-example { background: #1a1a18; color: #D4A574; border-radius: 8px; padding: 12px 16px; font-family: monospace; font-size: 13px; margin: 10px 0; }
+
+        /* Callouts */
+        .callout { border-radius: 10px; padding: 14px 16px; margin: 12px 0; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
+        .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: -1px; }
+        .callout-tip { background: #f0faf0; border: 1px solid #c6e6c6; color: #1e6e1e; }
+        .callout-warn { background: #fef9ee; border: 1px solid #f0dfa8; color: #8a6d00; }
+        .callout-danger { background: #fef2f2; border: 1px solid #f5c6c6; color: #a51d1d; }
+        .callout-info { background: #f0f4f9; border: 1px solid #c8d8ec; color: #1a5aa8; }
+
+        /* Connector line between steps */
+        .step::before { content: ''; position: absolute; left: 18px; top: 40px; width: 2px; height: calc(100% - 12px); background: #e8e8e8; }
+        .step:last-child::before { display: none; }
+
+        /* Divider */
+        .divider { border: none; height: 1px; background: #e8e8e8; margin: 20px 0; }
+
+        /* Final checklist */
+        .checklist { background: linear-gradient(135deg, #1a1a18, #2d3a2a); color: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; }
+        .checklist h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; color: #D4A574; }
+        .checklist-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-label { color: rgba(255,255,255,0.6); min-width: 200px; }
+        .checklist-value { font-family: monospace; color: #D4A574; flex: 1; }
+        .checkbox { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-radius: 4px; flex-shrink: 0; }
+
+        /* FAQ */
+        .faq-item { padding: 16px 0; border-bottom: 1px solid #eee; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-q { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+        .faq-a { font-size: 13px; color: #666; }
+
+        /* Print styles */
+        @media print {
+            body { background: white; }
+            .section { box-shadow: none; border: 1px solid #eee; }
+            .header { background: #1a1a18 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <p>SafariKannadiga</p>
+    <h1>🔑 Google & Facebook API Setup</h1>
+    <div class="subtitle">Follow this guide step by step. No coding required.</div>
+</div>
+
+<div class="container">
+
+    <!-- WHAT YOU NEED -->
+    <div class="section">
+        <h2 class="section-title">📋 What You'll Be Getting</h2>
+        <p class="section-desc">The website needs special keys (like passwords) from Google and Facebook to show your reviews automatically. Here's what we need:</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="padding: 16px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                <strong style="font-size: 14px;">From Google</strong>
+                <p style="font-size: 12px; color: #666; margin-top: 4px;">2 keys needed<br>Takes ~15 minutes</p>
+            </div>
+            <div style="padding: 16px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 8px;">📘</div>
+                <strong style="font-size: 14px;">From Facebook</strong>
+                <p style="font-size: 12px; color: #666; margin-top: 4px;">2 keys needed<br>Takes ~20 minutes</p>
+            </div>
+        </div>
+
+        <div class="callout callout-tip" style="margin-top: 16px;">
+            <span class="callout-icon">✅</span>
+            <span><strong>Both are completely free.</strong> Google gives $200 free credit/month (you'll use less than $2). Facebook's API is fully free.</span>
+        </div>
+    </div>
+
+    <!-- ============ GOOGLE SECTION ============ -->
+    <div class="section google">
+        <span class="section-badge badge-google">Google</span>
+        <h2 class="section-title" style="margin-top: 12px;">Part 1: Google Reviews API</h2>
+        <p class="section-desc">This lets the website automatically pull in reviews from your Google Business listing.</p>
+
+        <!-- Prerequisite -->
+        <div class="callout callout-warn">
+            <span class="callout-icon">⚠️</span>
+            <span><strong>Prerequisite:</strong> You must already have a Google Business Profile claimed and verified. If you don't, go to <a href="https://business.google.com" target="_blank">business.google.com</a> first (this takes 1-2 weeks for Google to verify).</span>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Step 1 -->
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>Find Your Google Place ID</h3>
+                <p>This is a unique code that identifies your business on Google Maps.</p>
+                <ol>
+                    <li>Open this link in your browser:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank">https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder</a>
+                </div>
+                <ol start="2">
+                    <li>You'll see a map with a search box at the top</li>
+                    <li>Type your <strong>business name</strong> (e.g., "SafariKannadiga")</li>
+                    <li>Click on your business from the dropdown</li>
+                    <li>A box will appear showing your <strong>Place ID</strong></li>
+                </ol>
+                <div class="key-example">Your Place ID will look like: <strong>ChIJ2eUgeAK6j4ARbn5u_wAGqWA</strong></div>
+                <div class="callout callout-tip">
+                    <span class="callout-icon">📋</span>
+                    <span><strong>Copy this ID</strong> and paste it somewhere safe. You'll need it later.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>Create a Google Cloud Account</h3>
+                <ol>
+                    <li>Go to:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://console.cloud.google.com" target="_blank">https://console.cloud.google.com</a>
+                </div>
+                <ol start="2">
+                    <li>Sign in with the <strong>same Google account</strong> that owns your Google Business</li>
+                    <li>Click <strong>"Agree and Continue"</strong> if you see a terms page</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h3>Create a New Project</h3>
+                <ol>
+                    <li>At the very top of the page, click the dropdown that says <strong>"Select a project"</strong></li>
+                    <li>In the popup window, click <strong>"NEW PROJECT"</strong> (top right corner)</li>
+                    <li>Type the name: <strong>SafariKannadiga</strong></li>
+                    <li>Click <strong>"Create"</strong></li>
+                    <li>Wait a few seconds for it to finish</li>
+                    <li>Make sure your new project is selected in the top dropdown</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h3>Turn On the Places API</h3>
+                <ol>
+                    <li>Click the <strong>☰ menu</strong> (three lines) at the top-left corner</li>
+                    <li>Click <strong>"APIs & Services"</strong></li>
+                    <li>Click <strong>"Library"</strong></li>
+                    <li>In the search bar, type: <strong>Places API</strong></li>
+                    <li>Click on <strong>"Places API"</strong> from the search results</li>
+                </ol>
+                <div class="callout callout-warn">
+                    <span class="callout-icon">⚠️</span>
+                    <span>Click <strong>"Places API"</strong>, NOT "Places API (New)" — they are different!</span>
+                </div>
+                <ol start="6">
+                    <li>Click the big blue <strong>"ENABLE"</strong> button</li>
+                    <li>Wait for it to turn on (a few seconds)</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <h3>Create Your API Key</h3>
+                <ol>
+                    <li>Click the <strong>☰ menu</strong> again at the top-left</li>
+                    <li>Click <strong>"APIs & Services"</strong> → <strong>"Credentials"</strong></li>
+                    <li>Click <strong>"+ CREATE CREDENTIALS"</strong> (blue text at the top)</li>
+                    <li>Select <strong>"API key"</strong> from the dropdown</li>
+                    <li>A popup will show your new key — <strong>COPY IT immediately!</strong></li>
+                </ol>
+                <div class="key-example">Your API Key will look like: <strong>AIzaSyB1234abcdefghijklmnop</strong></div>
+                <div class="callout callout-danger">
+                    <span class="callout-icon">🔒</span>
+                    <span><strong>This is like a password!</strong> Don't share it publicly. Only send it privately to the developer.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                <h3>Set Up Billing</h3>
+                <p>Google requires a billing account to use their API, but <strong>don't worry — you get $200 FREE every month</strong>. This website uses less than $2/month, so you won't be charged.</p>
+                <ol>
+                    <li>Click <strong>☰ menu</strong> → <strong>"Billing"</strong></li>
+                    <li>Click <strong>"Link a Billing Account"</strong> or <strong>"Create Account"</strong></li>
+                    <li>Choose your country</li>
+                    <li>Enter a payment method (credit or debit card)</li>
+                    <li>Click <strong>"Start Free Trial"</strong> or <strong>"Submit"</strong></li>
+                </ol>
+                <div class="callout callout-info">
+                    <span class="callout-icon">💡</span>
+                    <span>Google's $200/month free credit covers about 40,000 review lookups. Our website does about 30 per day — you'll never come close to being charged.</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #e8f0fe; border-radius: 10px; padding: 16px; margin-top: 8px;">
+            <strong style="color: #1a73e8;">✅ Done with Google!</strong>
+            <p style="font-size: 13px; color: #444; margin-top: 4px;">You should now have <strong>2 things</strong> saved: your <strong>Place ID</strong> and your <strong>API Key</strong>.</p>
+        </div>
+    </div>
+
+    <!-- ============ FACEBOOK SECTION ============ -->
+    <div class="section meta">
+        <span class="section-badge badge-meta">Facebook / Meta</span>
+        <h2 class="section-title" style="margin-top: 12px;">Part 2: Facebook Reviews API</h2>
+        <p class="section-desc">This lets the website automatically pull in reviews and recommendations from your Facebook Business Page.</p>
+
+        <div class="callout callout-warn">
+            <span class="callout-icon">⚠️</span>
+            <span><strong>Prerequisite:</strong> You must have a Facebook Business Page (not a personal profile). You must be an admin of that page.</span>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Step 1 -->
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>Find Your Facebook Page ID</h3>
+                <ol>
+                    <li>Go to your <strong>Facebook Business Page</strong></li>
+                    <li>Click <strong>"About"</strong> on the left sidebar</li>
+                    <li>Scroll to the very bottom</li>
+                    <li>You'll see <strong>"Page ID"</strong> — it's a long number</li>
+                </ol>
+                <div class="key-example">Your Page ID will look like: <strong>123456789012345</strong></div>
+                <div class="callout callout-tip">
+                    <span class="callout-icon">💡</span>
+                    <span><strong>Can't find it?</strong> Go to <a href="https://findmyfbid.in" target="_blank" style="color: #D4A574;">findmyfbid.in</a>, paste your Facebook Page URL, and it will show you the Page ID.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>Create a Meta Developer Account</h3>
+                <ol>
+                    <li>Open this link:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://developers.facebook.com" target="_blank">https://developers.facebook.com</a>
+                </div>
+                <ol start="2">
+                    <li>Click <strong>"Get Started"</strong> or <strong>"Log In"</strong></li>
+                    <li>Log in with the <strong>same Facebook account</strong> that manages your Page</li>
+                    <li>Accept the terms when asked</li>
+                    <li>Choose <strong>"Developer"</strong> as your role</li>
+                    <li>Verify your account with your phone number or email</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h3>Create an App</h3>
+                <ol>
+                    <li>Go to:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://developers.facebook.com/apps" target="_blank">https://developers.facebook.com/apps</a>
+                </div>
+                <ol start="2">
+                    <li>Click <strong>"Create App"</strong></li>
+                    <li>Select <strong>"Other"</strong> → click <strong>"Next"</strong></li>
+                    <li>Select <strong>"Business"</strong> as app type → click <strong>"Next"</strong></li>
+                    <li>Fill in:
+                        <ul>
+                            <li>App Name: <strong>SafariKannadiga Website</strong></li>
+                            <li>Contact Email: <strong>your email</strong></li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>"Create App"</strong></li>
+                    <li>Enter your Facebook password to confirm</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h3>Get Your Access Token</h3>
+                <p>This is the trickiest part — follow carefully!</p>
+                <ol>
+                    <li>Open the <strong>Graph API Explorer</strong>:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://developers.facebook.com/tools/explorer" target="_blank">https://developers.facebook.com/tools/explorer</a>
+                </div>
+                <ol start="2">
+                    <li>In the top-right, where it says <strong>"Facebook App"</strong>, select <strong>"SafariKannadiga Website"</strong></li>
+                    <li>Click <strong>"Add a Permission"</strong> and select:
+                        <ul>
+                            <li>✅ <strong>pages_show_list</strong></li>
+                            <li>✅ <strong>pages_read_user_content</strong></li>
+                        </ul>
+                    </li>
+                    <li>Click <strong>"Generate Access Token"</strong></li>
+                    <li>A popup will ask you to approve — click <strong>"Continue"</strong> through all prompts</li>
+                    <li>You now have a <strong>temporary token</strong> — but it expires in 1 hour!</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <h3>Make the Token Last Forever</h3>
+                <ol>
+                    <li><strong>Copy</strong> the token from Step 4</li>
+                    <li>Open the <strong>Access Token Debugger</strong>:</li>
+                </ol>
+                <div class="url-box">
+                    <a href="https://developers.facebook.com/tools/debug/accesstoken" target="_blank">https://developers.facebook.com/tools/debug/accesstoken</a>
+                </div>
+                <ol start="3">
+                    <li>Paste your token and click <strong>"Debug"</strong></li>
+                    <li>Scroll down and click <strong>"Extend Access Token"</strong></li>
+                    <li>A new, longer token will appear — <strong>copy it</strong></li>
+                    <li>Now go back to the <strong>Graph API Explorer</strong></li>
+                    <li>Paste the extended token into the <strong>"Access Token"</strong> field</li>
+                    <li>In the URL bar (where it says <code>me?fields=id,name</code>), change it to:</li>
+                </ol>
+                <div class="key-example">me/accounts</div>
+                <ol start="9">
+                    <li>Click <strong>"Submit"</strong></li>
+                    <li>In the response, find your page name and copy the <strong>"access_token"</strong> value next to it</li>
+                </ol>
+                <div class="callout callout-tip">
+                    <span class="callout-icon">🎉</span>
+                    <span><strong>This is your permanent Page Access Token!</strong> It won't expire as long as your page exists.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                <h3>Test That It Works</h3>
+                <ol>
+                    <li>Still in the <strong>Graph API Explorer</strong></li>
+                    <li>Paste your <strong>Page Access Token</strong> from Step 5</li>
+                    <li>In the URL bar, type:</li>
+                </ol>
+                <div class="key-example">YOUR_PAGE_ID/ratings?fields=created_time,reviewer,rating,review_text</div>
+                <p style="font-size: 13px; color: #666; margin-top: 4px;">(Replace YOUR_PAGE_ID with your actual Page ID number from Step 1)</p>
+                <ol start="4">
+                    <li>Click <strong>"Submit"</strong></li>
+                    <li>If you see review data in the response — <strong>it's working!</strong> ✅</li>
+                </ol>
+            </div>
+        </div>
+
+        <div style="background: #e7f0fd; border-radius: 10px; padding: 16px; margin-top: 8px;">
+            <strong style="color: #1877F2;">✅ Done with Facebook!</strong>
+            <p style="font-size: 13px; color: #444; margin-top: 4px;">You should now have <strong>2 things</strong> saved: your <strong>Page ID</strong> and your <strong>Page Access Token</strong>.</p>
+        </div>
+    </div>
+
+    <!-- ============ FINAL CHECKLIST ============ -->
+    <div class="checklist">
+        <h2>📋 Send These to the Developer</h2>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Fill in each value and send this list privately (not in a group chat).</p>
+
+        <div class="checklist-item">
+            <div class="checkbox"></div>
+            <span class="checklist-label">Google API Key</span>
+            <span class="checklist-value">AIzaSy________________</span>
+        </div>
+        <div class="checklist-item">
+            <div class="checkbox"></div>
+            <span class="checklist-label">Google Place ID</span>
+            <span class="checklist-value">ChIJ____________________</span>
+        </div>
+        <div class="checklist-item">
+            <div class="checkbox"></div>
+            <span class="checklist-label">Facebook Page ID</span>
+            <span class="checklist-value">____________________</span>
+        </div>
+        <div class="checklist-item">
+            <div class="checkbox"></div>
+            <span class="checklist-label">Facebook Access Token</span>
+            <span class="checklist-value">EAAG________________</span>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section">
+        <h2 class="section-title">❓ Common Questions</h2>
+        <div class="faq-item">
+            <div class="faq-q">Will Google charge me money?</div>
+            <div class="faq-a">Almost certainly not. You get $200 free every month. This website uses about $1-2/month total.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Will Facebook charge me?</div>
+            <div class="faq-a">No. Facebook's API is completely free to use.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">My Facebook token stopped working!</div>
+            <div class="faq-a">If you followed Step 5 correctly (getting the Page token from "me/accounts"), it should be permanent. If it does expire, just repeat Steps 4 and 5 to get a new one.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">I can't find my business on the Google Place ID finder</div>
+            <div class="faq-a">You need a Google Business Profile first. Go to <a href="https://business.google.com">business.google.com</a> to create one. Note: Google takes 1-2 weeks to verify new listings.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Google says "This API project is not authorized"</div>
+            <div class="faq-a">Make sure you completed Step 4 (enabling the Places API) and Step 6 (setting up billing). Both are required.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">I can't find Page ID on my Facebook page</div>
+            <div class="faq-a">Try going to <a href="https://findmyfbid.in">findmyfbid.in</a> and pasting your page URL. It will show you the ID.</div>
+        </div>
+    </div>
+
+    <div style="text-align: center; padding: 24px; color: #999; font-size: 12px;">
+        SafariKannadiga — API Setup Guide<br>
+        Send questions to the developer if you get stuck on any step.
+    </div>
+
+</div>
+
+</body>
+</html>

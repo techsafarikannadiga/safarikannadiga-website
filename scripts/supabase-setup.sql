@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS gallery_locations (
 
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_gallery_locations_continent ON gallery_locations(continent_slug);
+CREATE INDEX IF NOT EXISTS idx_gallery_locations_listing ON gallery_locations(continent_name, name);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE gallery_locations ENABLE ROW LEVEL SECURITY;
