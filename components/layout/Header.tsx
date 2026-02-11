@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/ui/Container';
 import { normalizeImageUrl } from '@/lib/image-utils';
@@ -65,6 +64,7 @@ export function Header({ settings }: HeaderProps) {
                                 fill
                                 className="object-contain"
                                 priority
+                                sizes="(max-width: 768px) 160px, 208px"
                             />
                         </div>
                     </Link>
@@ -136,60 +136,64 @@ export function Header({ settings }: HeaderProps) {
             </Container>
 
             {/* Mobile Menu Overlay */}
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="absolute top-0 left-0 w-full h-screen bg-white z-40 lg:hidden flex flex-col pt-24"
-                    >
-                        <nav className="flex flex-col items-center gap-6 px-6">
-                            {navigation.map((item, index) => (
-                                <motion.div
-                                    key={item.href}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                >
-                                    <Link
-                                        href={item.href}
-                                        className={cn(
-                                            'text-2xl font-heading font-medium transition-colors',
-                                            pathname === item.href ? 'text-safari-gold' : 'text-neutral-charcoal'
-                                        )}
-                                    >
-                                        {item.name}
-                                    </Link>
-                                </motion.div>
-                            ))}
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.8 }}
-                                className="w-full pt-8"
-                            >
-                                <Link
-                                    href="/contact"
-                                    className="block w-full text-center py-4 bg-safari-gold text-white rounded-card text-xl font-bold shadow-lg"
-                                >
-                                    Plan My Safari
-                                </Link>
-                            </motion.div>
-                        </nav>
-
-                        <div className="mt-auto pb-12 px-6 flex flex-col items-center gap-4 text-neutral-gray text-sm">
-                            <p>© 2026 SafariKannadiga</p>
-                            <div className="flex gap-4">
-                                <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">IG</span>
-                                <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">FB</span>
-                                <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">YT</span>
-                            </div>
-                        </div>
-                    </motion.div>
+            <div
+                className={cn(
+                    'absolute top-0 left-0 w-full h-screen bg-white z-40 lg:hidden flex flex-col pt-24 transition-all duration-300',
+                    isMobileMenuOpen
+                        ? 'opacity-100 translate-y-0 pointer-events-auto'
+                        : 'opacity-0 -translate-y-5 pointer-events-none'
                 )}
-            </AnimatePresence>
+            >
+                <nav className="flex flex-col items-center gap-6 px-6">
+                    {navigation.map((item, index) => (
+                        <div
+                            key={item.href}
+                            className={cn(
+                                'transition-all duration-300',
+                                isMobileMenuOpen
+                                    ? 'opacity-100 translate-x-0'
+                                    : 'opacity-0 -translate-x-5'
+                            )}
+                            style={{ transitionDelay: isMobileMenuOpen ? `${index * 100}ms` : '0ms' }}
+                        >
+                            <Link
+                                href={item.href}
+                                className={cn(
+                                    'text-2xl font-heading font-medium transition-colors',
+                                    pathname === item.href ? 'text-safari-gold' : 'text-neutral-charcoal'
+                                )}
+                            >
+                                {item.name}
+                            </Link>
+                        </div>
+                    ))}
+                    <div
+                        className={cn(
+                            'w-full pt-8 transition-all duration-300',
+                            isMobileMenuOpen
+                                ? 'opacity-100 scale-100'
+                                : 'opacity-0 scale-90'
+                        )}
+                        style={{ transitionDelay: isMobileMenuOpen ? '500ms' : '0ms' }}
+                    >
+                        <Link
+                            href="/contact"
+                            className="block w-full text-center py-4 bg-safari-gold text-white rounded-card text-xl font-bold shadow-lg"
+                        >
+                            Plan My Safari
+                        </Link>
+                    </div>
+                </nav>
+
+                <div className="mt-auto pb-12 px-6 flex flex-col items-center gap-4 text-neutral-gray text-sm">
+                    <p>© 2026 SafariKannadiga</p>
+                    <div className="flex gap-4">
+                        <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">IG</span>
+                        <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">FB</span>
+                        <span className="w-10 h-10 rounded-full bg-neutral-cream flex items-center justify-center">YT</span>
+                    </div>
+                </div>
+            </div>
         </header>
     );
 }

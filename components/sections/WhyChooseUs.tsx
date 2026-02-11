@@ -59,6 +59,7 @@ export function WhyChooseUs() {
                             alt="Safari Vehicle in Action"
                             fill
                             className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
                         />
                         {/* Stats overlay */}
                         <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-card z-20 flex justify-around text-center">

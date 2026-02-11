@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 
 export function WhatsAppButton() {
     const whatsappNumber = "254726088361"; // Updated to official number
@@ -9,12 +8,7 @@ export function WhatsAppButton() {
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
     return (
-        <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 1, type: 'spring', stiffness: 260, damping: 20 }}
-            className="fixed bottom-6 right-6 z-50 md:bottom-8 md:right-8"
-        >
+        <div className="fixed bottom-6 right-6 z-50 md:bottom-8 md:right-8 animate-whatsapp-pop">
             <Link
                 href={whatsappUrl}
                 target="_blank"
@@ -39,6 +33,6 @@ export function WhatsAppButton() {
                     Need help? Message us!
                 </div>
             </Link>
-        </motion.div>
+        </div>
     );
 }

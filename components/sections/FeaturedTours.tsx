@@ -48,10 +48,10 @@ const fallbackGuides: DestinationGuide[] = [
 export async function FeaturedDestinations() {
     // Fetch locations from backend
     let destinationGuides: DestinationGuide[] = [];
-    
+
     try {
         const locations = await getFeaturedLocations(3);
-        
+
         if (locations.length > 0) {
             destinationGuides = locations.map(loc => ({
                 title: loc.name,
@@ -98,6 +98,7 @@ export async function FeaturedDestinations() {
                                     alt={guide.title}
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                    sizes="(max-width: 1024px) 100vw, 33vw"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 

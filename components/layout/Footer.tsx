@@ -52,6 +52,7 @@ export function Footer({ settings }: FooterProps) {
                                     alt={brand.name || "SafariKannadiga"}
                                     fill
                                     className="object-contain"
+                                    sizes="208px"
                                 />
                             </div>
                         </Link>
@@ -145,7 +146,7 @@ export function Footer({ settings }: FooterProps) {
                                 // Fallback to mailto
                                 const subject = "Newsletter Subscription";
                                 const body = `Please subscribe me to the newsletter.\nEmail: ${email}`;
-                                window.location.href = `mailto:samarthv080@Gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                                window.location.href = `mailto:Safarikannadiga@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                             }
                         }}>
                             <input
@@ -168,9 +169,9 @@ export function Footer({ settings }: FooterProps) {
                     </div>
                     <div className="text-neutral-400 text-xs order-3 md:order-2">
                         Designed & Developed by{' '}
-                        <a 
-                            href="https://samarthv.me" 
-                            target="_blank" 
+                        <a
+                            href="https://samarthv.me"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-safari-gold hover:text-white transition-colors font-medium"
                         >

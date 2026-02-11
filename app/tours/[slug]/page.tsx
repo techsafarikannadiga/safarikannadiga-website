@@ -33,6 +33,7 @@ export default async function TourDetailPage({ params }: TourPageProps) {
                     fill
                     className="object-cover"
                     priority
+                    sizes="100vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                 <Container className="relative h-full flex items-end pb-12 z-10">

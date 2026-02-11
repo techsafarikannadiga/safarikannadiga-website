@@ -57,9 +57,10 @@ export default async function ContinentGalleryPage({ params }: { params: Promise
                                     alt={loc.name}
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                
+
                                 {/* Photo Count Badge */}
                                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-neutral-charcoal px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,11 +80,11 @@ export default async function ContinentGalleryPage({ params }: { params: Promise
                                 <span className="text-safari-gold text-xs font-bold uppercase tracking-wider">{loc.country}</span>
                                 <h3 className="text-xl font-bold font-heading mb-2 group-hover:text-safari-gold transition-colors">{loc.name}</h3>
                                 <p className="text-neutral-gray text-sm line-clamp-2 mb-4">{loc.description}</p>
-                                
+
                                 {/* Wildlife Tags */}
                                 <div className="flex flex-wrap gap-1">
                                     {loc.wildlife.slice(0, 3).map((animal) => (
-                                        <span 
+                                        <span
                                             key={animal}
                                             className="text-[10px] uppercase font-bold tracking-wider text-forest-green bg-forest-green/10 px-2 py-0.5 rounded"
                                         >

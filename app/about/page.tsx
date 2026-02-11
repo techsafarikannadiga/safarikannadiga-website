@@ -1,6 +1,12 @@
 import { Container } from '@/components/ui/Container';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'About Us | SafariKannadiga - Wildlife Safari Tours',
+    description: 'Learn about SafariKannadiga, founded by Tilak Raj. We create unforgettable wildlife safari experiences connecting people to nature across Africa and Asia.',
+};
 
 export default function AboutPage() {
     return (
@@ -13,6 +19,7 @@ export default function AboutPage() {
                     fill
                     className="object-cover"
                     priority
+                    sizes="100vw"
                 />
                 <div className="absolute inset-0 bg-black/60 z-10" />
                 <Container className="relative z-20 text-white text-center py-16">
@@ -44,6 +51,7 @@ export default function AboutPage() {
                             alt="Tilak Raj - Founder"
                             fill
                             className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
                         />
                     </div>
                 </div>

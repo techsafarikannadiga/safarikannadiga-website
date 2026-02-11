@@ -67,6 +67,20 @@ const config: Config = {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.5s ease-out',
         'slide-down': 'slideDown 0.5s ease-out',
+        'hero-fade-in': 'heroFadeIn 1s ease-in-out forwards',
+        'hero-fade-out': 'heroFadeOut 1s ease-in-out forwards',
+        'whatsapp-pop': 'whatsappPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both',
+        // Preloader animations
+        'sun-rise': 'sunRise 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both',
+        'icon-reveal': 'iconReveal 0.6s ease-out 0.8s both',
+        'text-reveal': 'textReveal 0.8s ease-out 1s both',
+        'load-bar': 'loadBar 1.8s ease-in-out 0.4s both',
+        'paw-step': 'pawStep 1.5s ease-in-out infinite',
+        'twinkle': 'twinkle 3s ease-in-out infinite',
+        'pulse-ring': 'pulseRing 2s ease-in-out infinite',
+        'horizon': 'horizon 1.5s ease-out 0.3s both',
+        'draw-path': 'drawPath 1s ease-out 0.8s both',
+        'draw-path-delay': 'drawPath 0.8s ease-out 1.2s both',
       },
       keyframes: {
         fadeIn: {
@@ -80,6 +94,57 @@ const config: Config = {
         slideDown: {
           '0%': { transform: 'translateY(-20px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        heroFadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        heroFadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        whatsappPop: {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        // Preloader keyframes
+        sunRise: {
+          '0%': { transform: 'scale(0.3) translateY(30px)', opacity: '0' },
+          '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+        },
+        iconReveal: {
+          '0%': { opacity: '0', transform: 'scale(0.5)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        textReveal: {
+          '0%': { opacity: '0', transform: 'translateY(15px)', letterSpacing: '0.5em' },
+          '100%': { opacity: '1', transform: 'translateY(0)', letterSpacing: '0.05em' },
+        },
+        loadBar: {
+          '0%': { width: '0%' },
+          '60%': { width: '70%' },
+          '100%': { width: '100%' },
+        },
+        pawStep: {
+          '0%, 100%': { opacity: '0.2', transform: 'scale(0.8)' },
+          '50%': { opacity: '1', transform: 'scale(1.1)' },
+        },
+        twinkle: {
+          '0%, 100%': { opacity: '0' },
+          '50%': { opacity: '0.8' },
+        },
+        pulseRing: {
+          '0%': { transform: 'scale(1)', opacity: '0.3' },
+          '50%': { transform: 'scale(1.3)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '0.3' },
+        },
+        horizon: {
+          '0%': { opacity: '0', transform: 'scaleX(0)' },
+          '100%': { opacity: '1', transform: 'scaleX(1)' },
+        },
+        drawPath: {
+          '0%': { strokeDasharray: '100', strokeDashoffset: '100', opacity: '0' },
+          '100%': { strokeDasharray: '100', strokeDashoffset: '0', opacity: '1' },
         },
       },
     },

@@ -6,9 +6,9 @@ import { getFeaturedLocations } from '@/lib/gallery-cloud';
 export async function Destinations() {
     // Get featured parks from gallery backend (ImageKit + Supabase)
     const featuredLocations = await getFeaturedLocations(4);
-    
+
     // Fallback to placeholder data if no locations with images
-    const featuredParks = featuredLocations.length > 0 
+    const featuredParks = featuredLocations.length > 0
         ? featuredLocations.map(loc => ({
             name: loc.name,
             location: loc.country,
@@ -59,6 +59,7 @@ export async function Destinations() {
                                 alt={park.name}
                                 fill
                                 className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
                             <div className="absolute bottom-6 left-6 right-6 z-20">

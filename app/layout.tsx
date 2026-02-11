@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { Preloader } from '@/components/ui/Preloader';
 import { getGeneralSettings } from '@/lib/content';
 
 const inter = Inter({
@@ -67,6 +68,7 @@ export default async function RootLayout({
     return (
         <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
             <body className="flex min-h-screen flex-col">
+                <Preloader />
                 <Header settings={settings} />
                 <main className="flex-grow">{children}</main>
                 <Footer settings={settings} />

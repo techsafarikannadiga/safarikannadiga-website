@@ -42,7 +42,7 @@ function ContactFormContent() {
             alert('Something went wrong. Opening your email client instead.');
             const subject = `Safari Inquiry: ${data.interest} - ${data.firstName} ${data.lastName}`;
             const body = `Name: ${data.firstName} ${data.lastName}%0D%0AEmail: ${data.email}%0D%0AInterest: ${data.interest}%0D%0A%0D%0AMessage:%0D%0A${data.message}`;
-            window.location.href = `mailto:samarthv080@Gmail.com?subject=${encodeURIComponent(subject)}&body=${body.replace(/\n/g, '%0D%0A')}`;
+            window.location.href = `mailto:Safarikannadiga@gmail.com?subject=${encodeURIComponent(subject)}&body=${body.replace(/\n/g, '%0D%0A')}`;
         } finally {
             setIsSubmitting(false);
         }
@@ -67,7 +67,7 @@ function ContactFormContent() {
                         </div>
                         <div>
                             <h3 className="font-bold mb-1">Email Us</h3>
-                            <a href="mailto:samarthv080@Gmail.com" className="text-neutral-gray hover:text-safari-gold transition-colors">samarthv080@Gmail.com</a>
+                            <a href="mailto:Safarikannadiga@gmail.com" className="text-neutral-gray hover:text-safari-gold transition-colors">Safarikannadiga@gmail.com</a>
                         </div>
                     </div>
 

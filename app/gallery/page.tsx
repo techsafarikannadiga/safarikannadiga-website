@@ -2,6 +2,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Container } from '@/components/ui/Container';
 import { getContinents } from '@/lib/gallery-cloud';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Wildlife Photo Gallery',
+    description: 'Browse stunning wildlife photography from SafariKannadiga expeditions across Africa and Asia. Lions, tigers, elephants, and more.',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +24,7 @@ export default async function GalleryPage() {
                     </span>
                     <h1 className="text-display mb-6">Wildlife Photo Gallery</h1>
                     <p className="text-neutral-gray text-lg">
-                        Explore our collection of breathtaking moments captured across the African savannahs 
+                        Explore our collection of breathtaking moments captured across the African savannahs
                         and Asian jungles. Select a continent to begin your visual journey.
                     </p>
                 </div>
@@ -41,9 +47,10 @@ export default async function GalleryPage() {
                                     alt={continent.name}
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                    sizes="(max-width: 768px) 100vw, 50vw"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent transition-opacity group-hover:opacity-90" />
-                                
+
                                 {/* Content Overlay */}
                                 <div className="absolute bottom-0 left-0 right-0 p-8">
                                     <div className="flex items-center gap-3 mb-3">
@@ -61,7 +68,7 @@ export default async function GalleryPage() {
                                     <p className="text-white/80 text-sm md:text-base max-w-md">
                                         {continent.description}
                                     </p>
-                                    
+
                                     {/* Explore Button */}
                                     <div className="mt-6 flex items-center gap-2 text-safari-gold font-bold text-sm group-hover:gap-4 transition-all">
                                         Explore Gallery
@@ -74,7 +81,7 @@ export default async function GalleryPage() {
                                 {/* Location Preview Pills */}
                                 <div className="absolute top-6 left-6 right-6 flex flex-wrap gap-2">
                                     {continent.locations.slice(0, 4).map((loc) => (
-                                        <span 
+                                        <span
                                             key={loc.slug}
                                             className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full"
                                         >

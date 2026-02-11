@@ -1,5 +1,11 @@
 import { UpcomingTours } from '@/components/sections/UpcomingTours';
 import { Container } from '@/components/ui/Container';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Upcoming Tours',
+    description: 'Browse upcoming wildlife safari tours with SafariKannadiga. Join our group departures to Kenya, India, and more. Limited seats available.',
+};
 
 export default function UpcomingToursPage() {
     return (

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Container } from '@/components/ui/Container';
+import { normalizeImageUrl } from '@/lib/image-utils';
 
 interface HeroProps {
     title: string;
@@ -12,10 +12,10 @@ interface HeroProps {
     backgroundImage?: string;
 }
 
-import { normalizeImageUrl } from '@/lib/image-utils';
-
 export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [prevImageIndex, setPrevImageIndex] = useState<number | null>(null);
+    const [isContentVisible, setIsContentVisible] = useState(false);
 
     const heroImages = [
         "/images/hero-uploads/hero-selected-1.jpg",
@@ -26,47 +26,65 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
     ];
 
     useEffect(() => {
+        // Trigger content entrance animation after mount
+        requestAnimationFrame(() => setIsContentVisible(true));
+
         const interval = setInterval(() => {
+            setPrevImageIndex(currentImageIndex);
             setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
         }, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [currentImageIndex]);
 
-    const currentImage = normalizeImageUrl(heroImages[currentImageIndex]);
+    // Clear prevImageIndex after transition completes
+    useEffect(() => {
+        if (prevImageIndex !== null) {
+            const timeout = setTimeout(() => setPrevImageIndex(null), 1000);
+            return () => clearTimeout(timeout);
+        }
+    }, [prevImageIndex]);
 
     return (
         <section className="relative h-[92vh] w-full overflow-hidden flex items-start md:items-end justify-center md:justify-end">
-            {/* Background Carousel */}
+            {/* Background Carousel with CSS transitions */}
             <div className="absolute inset-0 z-0">
-                <AnimatePresence mode='wait'>
-                    <motion.div
-                        key={currentImageIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1 }}
-                        className="absolute inset-0"
-                    >
+                {/* Previous image (fading out) */}
+                {prevImageIndex !== null && (
+                    <div className="absolute inset-0 animate-hero-fade-out">
                         <Image
-                            src={currentImage}
+                            src={normalizeImageUrl(heroImages[prevImageIndex])}
                             alt="Safari Landscape"
                             fill
                             className="object-cover object-center"
-                            priority
+                            sizes="100vw"
+                            quality={75}
                         />
-                    </motion.div>
-                </AnimatePresence>
+                    </div>
+                )}
+
+                {/* Current image (fading in) */}
+                <div
+                    key={currentImageIndex}
+                    className="absolute inset-0 animate-hero-fade-in"
+                >
+                    <Image
+                        src={normalizeImageUrl(heroImages[currentImageIndex])}
+                        alt="Safari Landscape"
+                        fill
+                        className="object-cover object-center"
+                        priority={currentImageIndex === 0}
+                        sizes="100vw"
+                        quality={75}
+                    />
+                </div>
 
                 {/* Gradient Overlay - Static */}
                 <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/60 md:bg-gradient-to-t md:from-black/90 md:via-black/40 md:to-transparent z-10" />
             </div>
 
             <Container className="relative z-20 text-center md:text-right text-white pt-32 md:pt-0 pb-10 md:pb-40">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="max-w-4xl ml-auto"
+                <div
+                    className={`max-w-4xl ml-auto transition-all duration-700 ease-out ${isContentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                 >
                     <span className="inline-block px-4 py-1.5 mb-6 text-sm font-bold tracking-widest uppercase bg-safari-gold text-white rounded-full shadow-lg">
                         The Ultimate Safari Experience
@@ -85,15 +103,18 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
                             View Gallery
                         </Link>
                     </div>
-                </motion.div>
+                </div>
             </Container>
 
-            {/* Carousel Indicators (Optional) */}
+            {/* Carousel Indicators */}
             <div className="absolute bottom-6 left-6 z-20 flex gap-2">
                 {heroImages.map((_, idx) => (
                     <button
                         key={idx}
-                        onClick={() => setCurrentImageIndex(idx)}
+                        onClick={() => {
+                            setPrevImageIndex(currentImageIndex);
+                            setCurrentImageIndex(idx);
+                        }}
                         className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-8 bg-safari-gold' : 'w-2 bg-white/50 hover:bg-white'}`}
                         aria-label={`Go to slide ${idx + 1}`}
                     />
@@ -101,15 +122,12 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
             </div>
 
             {/* Scroll Indicator - Desktop Only */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 2, duration: 1 }}
-                className="absolute bottom-10 right-10 z-20 hidden md:flex flex-col items-center gap-2"
+            <div
+                className={`absolute bottom-10 right-10 z-20 hidden md:flex flex-col items-center gap-2 transition-opacity duration-1000 delay-[2000ms] ${isContentVisible ? 'opacity-100' : 'opacity-0'}`}
             >
                 <span className="text-white/60 text-[10px] uppercase tracking-widest rotate-90 origin-right translate-x-full">Scroll</span>
                 <div className="w-px h-12 bg-gradient-to-b from-white/60 to-transparent mt-8" />
-            </motion.div>
+            </div>
         </section>
     );
 }

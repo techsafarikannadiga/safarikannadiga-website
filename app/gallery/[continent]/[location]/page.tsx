@@ -12,7 +12,7 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
 
     const continent = await getContinent(continentSlug);
     const location = await getLocation(continentSlug, locationSlug);
-    
+
     if (!continent || !location) return notFound();
 
     const images = await getImages(continentSlug, locationSlug);
@@ -50,7 +50,7 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
                         {/* Wildlife Tags */}
                         <div className="flex flex-wrap gap-2 mb-6">
                             {location.wildlife.map((animal) => (
-                                <span 
+                                <span
                                     key={animal}
                                     className="text-xs uppercase font-bold tracking-wider text-forest-green bg-forest-green/10 px-3 py-1 rounded-full"
                                 >
@@ -79,20 +79,21 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
                             alt={location.name}
                             fill
                             className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     </div>
                 </div>
 
                 {/* Photo Gallery */}
-                <GalleryLocationClient 
-                    images={images.map(img => ({ 
-                        src: img.src, 
+                <GalleryLocationClient
+                    images={images.map(img => ({
+                        src: img.src,
                         filename: img.filename,
-                        alt: img.alt, 
+                        alt: img.alt,
                         publicId: img.publicId
-                    }))} 
-                    title={location.name} 
+                    }))}
+                    title={location.name}
                 />
 
                 {/* Share Experience CTA */}
