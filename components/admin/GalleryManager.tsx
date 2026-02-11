@@ -312,7 +312,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
             </div>
 
             {/* Continents Tabs */}
-            <div className="flex gap-2 p-1 bg-gray-100/50 rounded-2xl w-full md:w-fit overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 p-1 bg-gray-100/50 rounded-2xl w-full md:w-fit overflow-x-auto pb-2">
                 {structure.map(c => (
                     <button
                         key={c.name}
@@ -331,7 +331,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
             </div>
 
             {/* Locations Navigation */}
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
+            <div className="flex items-center gap-3 overflow-x-auto pb-2">
                 {activeContinent?.locations.map(loc => (
                     <div key={loc.name} className="relative group shrink-0">
                         <button

@@ -179,7 +179,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Main Tabs */}
-                <div className="flex gap-1 p-1 bg-white rounded-2xl shadow-sm mb-10 w-full md:w-fit overflow-x-auto no-scrollbar">
+                <div className="flex gap-1 p-1 bg-white rounded-2xl shadow-sm mb-10 w-full md:w-fit overflow-x-auto pb-2">
                     {[
                         { id: 'gallery', label: 'Gallery', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
                         { id: 'tours', label: 'Tours', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
