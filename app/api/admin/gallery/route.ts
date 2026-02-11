@@ -7,6 +7,8 @@ import {
     setCoverPhoto
 } from '@/lib/gallery-cloud';
 
+export const maxDuration = 60;
+
 // GET: List Full Structure
 export async function GET() {
     try {

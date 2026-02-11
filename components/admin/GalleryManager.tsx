@@ -89,16 +89,46 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
 
         const uploadFile = async (file: File, ghostPath: string, index: number) => {
             setUploadProgress(`Uploading ${index + 1}/${files.length}: ${file.name}`);
+
+            let fileToUpload = file;
+
+            // CLIENT-SIDE COMPRESSION CHECK
+            // If file is > 4.5MB, we must compress in browser to pass server limits
+            if (file.size > 4.5 * 1024 * 1024) {
+                try {
+                    setUploadProgress(`Resizing large file... ${index + 1}/${files.length}`);
+                    fileToUpload = await compressInBrowser(file);
+                } catch (err) {
+                    console.error('Browser compression failed', err);
+                }
+            }
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', fileToUpload);
             formData.append('continent', activeContinentName);
             formData.append('location', activeLocationName);
 
             try {
                 const res = await fetch('/api/admin/gallery', { method: 'POST', body: formData });
+
+                if (!res.ok) {
+                    const contentType = res.headers.get('content-type');
+                    let errorMsg = `Upload failed (${res.status})`;
+
+                    if (contentType?.includes('application/json')) {
+                        const errData = await res.json();
+                        errorMsg = errData.error || errorMsg;
+                    } else {
+                        const text = await res.text();
+                        // If it's a giant HTML error page, don't alert the whole thing
+                        errorMsg = text.length > 100 ? `Server Error (${res.status}): Please check if the file is too large or if the server is down.` : text;
+                    }
+                    throw new Error(errorMsg);
+                }
+
                 const data = await res.json();
 
-                if (res.ok && data.url) {
+                if (data.url) {
                     // Update local ghost image with real data immediately
                     setLocalStructure(prev => prev.map(c => {
                         if (c.name !== activeContinentName) return c;
@@ -119,12 +149,71 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                         };
                     }));
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Upload error', err);
+                alert(`Failed to upload ${file.name}: ${err.message || 'Check your internet or try a smaller file.'}`);
+
+                // CRITICAL: Remove the stuck ghost image on failure
+                setLocalStructure(prev => prev.map(c => {
+                    if (c.name !== activeContinentName) return c;
+                    return {
+                        ...c,
+                        locations: c.locations.map(l => ({
+                            ...l,
+                            images: l.images.filter(img => img.path !== ghostPath)
+                        }))
+                    };
+                }));
             } finally {
                 URL.revokeObjectURL(pendingUploads.find(p => p.path === ghostPath)?.url || '');
             }
         };
+
+        // Helper for browser-side resizing
+        async function compressInBrowser(file: File): Promise<File> {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new (window as any).Image();
+                    img.src = event.target?.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Max 2000px resolution in browser to stay safe
+                        const MAX_SIZE = 2000;
+                        if (width > height) {
+                            if (width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            }
+                        } else {
+                            if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+                            } else {
+                                reject(new Error('Canvas blob construction failed'));
+                            }
+                        }, 'image/jpeg', 0.8);
+                    };
+                    img.onerror = () => reject(new Error('Image load failed'));
+                };
+                reader.onerror = () => reject(new Error('FileReader failed'));
+            });
+        }
 
         // Upload in parallel chunks (2 images at a time to avoid overwhelming server)
         for (let i = 0; i < files.length; i += 2) {
