@@ -81,17 +81,17 @@ const cacheStore = new Map<string, CacheEntry<unknown>>();
  */
 function getCached<T>(key: string): T | null {
     if (!CACHE_CONFIG.ENABLED) return null;
-    
+
     const entry = cacheStore.get(key);
     if (!entry) return null;
-    
+
     // Check if expired
     const age = Date.now() - entry.timestamp;
     if (age > CACHE_CONFIG.TTL) {
         cacheStore.delete(key);
         return null;
     }
-    
+
     return entry.data as T;
 }
 
@@ -100,14 +100,14 @@ function getCached<T>(key: string): T | null {
  */
 function setCache<T>(key: string, data: T): void {
     if (!CACHE_CONFIG.ENABLED) return;
-    
+
     // Prevent memory leaks - remove oldest entries if at limit
     if (cacheStore.size >= CACHE_CONFIG.MAX_ENTRIES) {
         const oldestKey = Array.from(cacheStore.entries())
             .sort((a, b) => a[1].timestamp - b[1].timestamp)[0]?.[0];
         if (oldestKey) cacheStore.delete(oldestKey);
     }
-    
+
     cacheStore.set(key, { data, timestamp: Date.now(), key });
 }
 
@@ -218,7 +218,7 @@ async function getGalleryConfig() {
     if (isSupabaseConfigured()) {
         // Get from Supabase
         const locations = await getLocationsFromDB();
-        
+
         // Group by continent
         const continentMap: Record<string, any> = {};
         locations.forEach(loc => {
@@ -240,7 +240,7 @@ async function getGalleryConfig() {
                 wildlife: loc.wildlife || []
             });
         });
-        
+
         return { continents: Object.values(continentMap) };
     } else {
         // Fallback to local file
@@ -267,7 +267,7 @@ async function getImageKitImages(folderPath: string): Promise<GalleryImage[]> {
 
     try {
         const files = await listFiles(folderPath);
-        
+
         return files.map((file: ImageKitFile) => ({
             src: file.url,
             filename: file.name,
@@ -288,50 +288,50 @@ export async function getContinents(): Promise<GalleryContinent[]> {
     const cacheKey = 'continents';
     const cached = getCached<GalleryContinent[]>(cacheKey);
     if (cached) return cached;
-    
+
     const config = await getGalleryConfig();
     const savedCovers = await getGalleryCovers();
-    
+
     const continents = await Promise.all(config.continents.map(async (continent: any) => {
         let totalImages = 0;
         let continentCoverFromLocation = '';
-        
+
         const locationsWithCounts = await Promise.all(continent.locations.map(async (loc: any) => {
             const folderPath = getLocationFolderPath(continent.name, loc.name);
             const images = await getImageKitImages(folderPath);
             totalImages += images.length;
-            
+
             // Check for saved cover photo
             const coverKey = `${continent.name}/${loc.name}`;
             const savedCover = savedCovers[coverKey];
-            
+
             // Get cover image (saved cover must be valid URL, first image, or fallback)
             let coverImage = '/images/placeholder-safari.jpg';
-            
+
             // Only use saved cover if it's a valid absolute URL (not old local path)
             const isValidUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
-            
+
             if (isValidUrl) {
                 coverImage = savedCover;
             } else if (images.length > 0) {
                 coverImage = images[0].src;
             }
-            
+
             // Use first location with images as continent cover
             if (!continentCoverFromLocation && images.length > 0) {
                 continentCoverFromLocation = coverImage;
             }
-            
+
             return {
                 ...loc,
                 coverImage,
                 imageCount: images.length
             };
         }));
-        
+
         // Get continent cover image (from first location with images or config)
         const coverImage = continentCoverFromLocation || continent.coverImage || '/images/placeholder-safari.jpg';
-        
+
         return {
             id: continent.id,
             name: continent.name,
@@ -343,7 +343,7 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             totalImages
         };
     }));
-    
+
     // Save to cache
     setCache(cacheKey, continents);
     return continents;
@@ -381,17 +381,17 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
     const cacheKey = `images:${continentSlug}:${locationSlug}`;
     const cached = getCached<GalleryImage[]>(cacheKey);
     if (cached) return cached;
-    
+
     const config = await getGalleryConfig();
     const continent = config.continents.find((c: any) => c.slug === continentSlug);
     if (!continent) return [];
-    
+
     const location = continent.locations.find((l: any) => l.slug === locationSlug);
     if (!location) return [];
-    
+
     const folderPath = getLocationFolderPath(continent.name, location.name);
     const images = await getImageKitImages(folderPath);
-    
+
     // Cache the result
     setCache(cacheKey, images);
     return images;
@@ -403,7 +403,7 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
 export async function getFullGalleryStructure() {
     const continents = await getContinents();
     const savedCovers = await getGalleryCovers();
-    
+
     return await Promise.all(continents.map(async continent => ({
         name: continent.name,
         slug: continent.slug,
@@ -411,16 +411,16 @@ export async function getFullGalleryStructure() {
             const config = await getGalleryConfig();
             const cont = config.continents.find((c: any) => c.slug === continent.slug);
             const location = cont?.locations.find((l: any) => l.slug === loc.slug);
-            
+
             const folderPath = getLocationFolderPath(continent.name, location?.name || loc.name);
             const images = await getImageKitImages(folderPath);
             const coverKey = `${continent.name}/${loc.name}`;
             const savedCover = savedCovers[coverKey];
-            
+
             // Only use saved cover if it's a valid URL, otherwise use first image
             const isValidCoverUrl = savedCover && savedCover.startsWith('https://');
             const currentCover = isValidCoverUrl ? savedCover : (images.length > 0 ? images[0].src : null);
-            
+
             return {
                 name: loc.name,
                 slug: loc.slug,
@@ -445,7 +445,7 @@ export async function getFullGalleryStructure() {
 export async function setCoverPhoto(continentName: string, locationName: string, imagePath: string): Promise<{ success: boolean; error?: string }> {
     try {
         const key = `${continentName}/${locationName}`;
-        
+
         if (isSupabaseConfigured()) {
             const result = await setCoverInDB(key, imagePath);
             if (result.success) clearCache();
@@ -479,15 +479,15 @@ async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: 
     try {
         const image = sharp(buffer);
         const metadata = await image.metadata();
-        
+
         // Only compress if it's an image we can process
         if (!metadata.format) {
             return { data: buffer, name: fileName };
         }
-        
+
         // Calculate original size for logging
         const originalSize = buffer.length;
-        
+
         // Resize if larger than max dimensions, maintaining aspect ratio
         let pipeline = image;
         if ((metadata.width && metadata.width > IMAGE_COMPRESSION.maxWidth) ||
@@ -497,19 +497,19 @@ async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: 
                 withoutEnlargement: true
             });
         }
-        
+
         // Convert to JPEG with compression
         const compressedBuffer = await pipeline
             .jpeg({ quality: IMAGE_COMPRESSION.quality, mozjpeg: true })
             .toBuffer();
-        
+
         // Change extension to .jpg
         const newName = fileName.replace(/\.[^.]+$/, '.jpg');
-        
+
         const savedBytes = originalSize - compressedBuffer.length;
         const savedPercent = ((savedBytes / originalSize) * 100).toFixed(1);
         console.log(`Compressed ${fileName}: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB (saved ${savedPercent}%)`);
-        
+
         return { data: compressedBuffer, name: newName };
     } catch (error) {
         console.warn('Image compression failed, uploading original:', error);
@@ -529,12 +529,12 @@ export async function saveImage(
         const bytes = await file.arrayBuffer();
         const originalBuffer = Buffer.from(bytes);
         const folder = getLocationFolderPath(continentName, locationName);
-        
+
         // Compress image before upload to save storage
         const { data: compressedBuffer, name: compressedName } = await compressImage(originalBuffer, file.name);
-        
+
         const result = await uploadFile(compressedBuffer, compressedName, folder);
-        
+
         if (result.success) {
             clearCache(); // Clear cache after upload
             return {
@@ -543,7 +543,7 @@ export async function saveImage(
                 url: result.url
             };
         }
-        
+
         return { success: false, error: result.error || 'Failed to upload image' };
     } catch (error) {
         console.error('Error uploading to ImageKit:', error);
@@ -562,7 +562,7 @@ export async function deleteImage(imagePath: string): Promise<{ success: boolean
             console.warn('Deleting by URL is not efficient. Use fileId when possible.');
             return { success: false, error: 'Please use fileId for deletion' };
         }
-        
+
         const result = await deleteFile(imagePath);
         if (result.success) clearCache();
         return result;
@@ -597,7 +597,7 @@ export async function addLocation(
 ): Promise<{ success: boolean; error?: string; location?: any }> {
     try {
         const slug = createSlug(locationData.name);
-        
+
         if (isSupabaseConfigured()) {
             // Get continent name from slug
             const continentNames: Record<string, string> = {
@@ -605,7 +605,7 @@ export async function addLocation(
                 'asia': 'Asia'
             };
             const continentName = continentNames[continentSlug] || continentSlug;
-            
+
             const newLocation: GalleryLocationDB = {
                 id: `${continentSlug}-${slug}`,
                 continent_slug: continentSlug,
@@ -616,7 +616,7 @@ export async function addLocation(
                 description: locationData.description || `Explore the wildlife of ${locationData.name}.`,
                 wildlife: locationData.wildlife || []
             };
-            
+
             const result = await addLocationToDB(newLocation);
             if (result.success) {
                 clearCache();
@@ -627,18 +627,18 @@ export async function addLocation(
             // Local file fallback
             const config = getGalleryConfigLocal();
             const continentIndex = config.continents.findIndex((c: any) => c.slug === continentSlug);
-            
+
             if (continentIndex === -1) {
                 return { success: false, error: 'Continent not found' };
             }
-            
+
             const continent = config.continents[continentIndex];
-            
+
             // Check if location already exists
             if (continent.locations.some((l: any) => l.slug === slug || l.name.toLowerCase() === locationData.name.toLowerCase())) {
                 return { success: false, error: 'Location already exists' };
             }
-            
+
             const newLocation = {
                 id: slug,
                 name: locationData.name,
@@ -647,13 +647,13 @@ export async function addLocation(
                 description: locationData.description || `Explore the wildlife of ${locationData.name}.`,
                 wildlife: locationData.wildlife || []
             };
-            
+
             config.continents[continentIndex].locations.push(newLocation);
-            
+
             if (!saveGalleryConfigLocal(config)) {
                 return { success: false, error: 'Failed to save configuration' };
             }
-            
+
             clearCache();
             return { success: true, location: newLocation };
         }
@@ -673,17 +673,17 @@ export async function deleteLocation(
     try {
         const config = await getGalleryConfig();
         const continent = config.continents.find((c: any) => c.slug === continentSlug);
-        
+
         if (!continent) {
             return { success: false, error: 'Continent not found' };
         }
-        
+
         const location = continent.locations.find((l: any) => l.slug === locationSlug);
-        
+
         if (!location) {
             return { success: false, error: 'Location not found' };
         }
-        
+
         // Delete all images from ImageKit folder
         const folderPath = getLocationFolderPath(continent.name, location.name);
         try {
@@ -692,7 +692,7 @@ export async function deleteLocation(
             // Folder might be empty or not exist
             console.log('Folder cleanup:', e);
         }
-        
+
         // Remove cover photo entry
         const coverKey = `${continent.name}/${location.name}`;
         if (isSupabaseConfigured()) {
@@ -707,19 +707,19 @@ export async function deleteLocation(
             const localConfig = getGalleryConfigLocal();
             const continentIndex = localConfig.continents.findIndex((c: any) => c.slug === continentSlug);
             const locationIndex = localConfig.continents[continentIndex].locations.findIndex((l: any) => l.slug === locationSlug);
-            
+
             localConfig.continents[continentIndex].locations.splice(locationIndex, 1);
-            
+
             if (!saveGalleryConfigLocal(localConfig)) {
                 return { success: false, error: 'Failed to save configuration' };
             }
-            
+
             const covers = getGalleryCoversLocal();
             if (covers[coverKey]) {
                 delete covers[coverKey];
                 saveGalleryCoversLocal(covers);
             }
-            
+
             clearCache();
             return { success: true };
         }
@@ -751,19 +751,19 @@ export async function updateLocation(
             // Local file fallback
             const config = getGalleryConfigLocal();
             const continentIndex = config.continents.findIndex((c: any) => c.slug === continentSlug);
-            
+
             if (continentIndex === -1) {
                 return { success: false, error: 'Continent not found' };
             }
-            
+
             const locationIndex = config.continents[continentIndex].locations.findIndex(
                 (l: any) => l.slug === locationSlug
             );
-            
+
             if (locationIndex === -1) {
                 return { success: false, error: 'Location not found' };
             }
-            
+
             // Apply updates
             if (updates.description !== undefined) {
                 config.continents[continentIndex].locations[locationIndex].description = updates.description;
@@ -774,11 +774,11 @@ export async function updateLocation(
             if (updates.country !== undefined) {
                 config.continents[continentIndex].locations[locationIndex].country = updates.country;
             }
-            
+
             if (!saveGalleryConfigLocal(config)) {
                 return { success: false, error: 'Failed to save configuration' };
             }
-            
+
             clearCache();
             return { success: true };
         }
@@ -803,7 +803,7 @@ export async function getContinentsList(): Promise<{ slug: string; name: string 
  * Get featured locations for home page display
  * Returns locations with the most images, with cover photos
  */
-export async function getFeaturedLocations(limit: number = 4): Promise<{
+export interface FeaturedLocation {
     name: string;
     slug: string;
     continentSlug: string;
@@ -812,11 +812,13 @@ export async function getFeaturedLocations(limit: number = 4): Promise<{
     wildlife: string[];
     coverImage: string;
     imageCount: number;
-}[]> {
+}
+
+export async function getFeaturedLocations(limit: number = 4): Promise<FeaturedLocation[]> {
     const continents = await getContinents();
-    
+
     // Flatten all locations with their continent info
-    const allLocations = continents.flatMap(continent => 
+    const allLocations = continents.flatMap(continent =>
         continent.locations.map(loc => ({
             name: loc.name,
             slug: loc.slug,
@@ -828,7 +830,7 @@ export async function getFeaturedLocations(limit: number = 4): Promise<{
             imageCount: loc.imageCount
         }))
     );
-    
+
     // Sort by image count (locations with most images first)
     // Then filter out locations without cover images
     return allLocations

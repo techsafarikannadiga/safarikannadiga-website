@@ -1,15 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Container } from '@/components/ui/Container';
-import { getFeaturedLocations } from '@/lib/gallery-cloud';
 
-export async function Destinations() {
-    // Get featured parks from gallery backend (ImageKit + Supabase)
-    const featuredLocations = await getFeaturedLocations(4);
+import { FeaturedLocation } from '@/lib/gallery-cloud';
 
+export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
     // Fallback to placeholder data if no locations with images
-    const featuredParks = featuredLocations.length > 0
-        ? featuredLocations.map(loc => ({
+    const featuredParks = locations && locations.length > 0
+        ? locations.map(loc => ({
             name: loc.name,
             location: loc.country,
             image: loc.coverImage,

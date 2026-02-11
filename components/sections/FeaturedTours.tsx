@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Container } from '@/components/ui/Container';
 import { normalizeImageUrl } from '@/lib/image-utils';
-import { getFeaturedLocations } from '@/lib/gallery-cloud';
+import { FeaturedLocation } from '@/lib/gallery-cloud';
 
 interface DestinationGuide {
     title: string;
@@ -45,28 +45,25 @@ const fallbackGuides: DestinationGuide[] = [
     }
 ];
 
-export async function FeaturedDestinations() {
-    // Fetch locations from backend
+interface FeaturedDestinationProps {
+    locations: FeaturedLocation[];
+}
+
+export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
+    // Transform backend locations to component format
     let destinationGuides: DestinationGuide[] = [];
 
-    try {
-        const locations = await getFeaturedLocations(3);
-
-        if (locations.length > 0) {
-            destinationGuides = locations.map(loc => ({
-                title: loc.name,
-                slug: loc.slug,
-                location: loc.country || loc.continentSlug,
-                image: loc.coverImage,
-                excerpt: loc.description || `Explore the stunning wildlife and landscapes of ${loc.name}.`,
-                wildlife: Array.isArray(loc.wildlife) ? loc.wildlife : (loc.wildlife ? String(loc.wildlife).split(',').map(w => w.trim()) : ['Wildlife']),
-                bestTime: "Year-round"
-            }));
-        } else {
-            destinationGuides = fallbackGuides;
-        }
-    } catch (error) {
-        console.error('Error fetching featured locations:', error);
+    if (locations && locations.length > 0) {
+        destinationGuides = locations.slice(0, 3).map(loc => ({
+            title: loc.name,
+            slug: loc.slug,
+            location: loc.country || loc.continentSlug,
+            image: loc.coverImage,
+            excerpt: loc.description || `Explore the stunning wildlife and landscapes of ${loc.name}.`,
+            wildlife: Array.isArray(loc.wildlife) ? loc.wildlife : (loc.wildlife ? String(loc.wildlife).split(',').map(w => w.trim()) : ['Wildlife']),
+            bestTime: "Year-round"
+        }));
+    } else {
         destinationGuides = fallbackGuides;
     }
     return (

@@ -5,9 +5,11 @@ import { Destinations } from '@/components/sections/Destinations';
 import { WhyChooseUs } from '@/components/sections/WhyChooseUs';
 import { TestimonialsSection, ShareExperienceSection } from '@/components/sections/TestimonialsSection';
 import { getGeneralSettings } from '@/lib/content';
+import { getFeaturedLocations } from '@/lib/gallery-cloud';
 
 export default async function HomePage() {
     const settings = await getGeneralSettings();
+    const featuredLocations = await getFeaturedLocations(4);
 
     return (
         <div className="flex flex-col overflow-x-hidden">
@@ -16,9 +18,9 @@ export default async function HomePage() {
                 subtitle={settings?.brand?.description || "Expert-led photography safaris and luxury wildlife tours."}
                 backgroundImage={settings?.heroImage}
             />
-            <FeaturedDestinations />
+            <FeaturedDestinations locations={featuredLocations} />
             <UpcomingTours />
-            <Destinations />
+            <Destinations locations={featuredLocations} />
             <WhyChooseUs />
             <TestimonialsSection />
             <ShareExperienceSection />
