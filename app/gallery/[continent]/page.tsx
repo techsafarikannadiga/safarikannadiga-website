@@ -62,14 +62,20 @@ export default async function ContinentGalleryPage({ params }: { params: Promise
                             className="group block bg-white rounded-card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
                         >
                             <div className="relative aspect-[4/3] overflow-hidden">
-                                <Image
-                                    src={loc.coverImage}
-                                    alt={loc.name}
-                                    fill
-                                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    priority={idx < 3}
-                                />
+                                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
+                                    <Image
+                                        src={loc.coverImage}
+                                        alt={loc.name}
+                                        fill
+                                        style={{
+                                            objectPosition: `${loc.focalX}% ${loc.focalY}%`,
+                                            transform: `scale(${loc.zoom})`
+                                        }}
+                                        className="object-cover"
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                        priority={idx < 3}
+                                    />
+                                </div>
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                                 {/* Photo Count Badge */}

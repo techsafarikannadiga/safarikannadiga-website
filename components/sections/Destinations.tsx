@@ -11,32 +11,47 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
             name: loc.name,
             location: loc.country,
             image: loc.coverImage,
-            href: `/gallery/${loc.continentSlug}/${loc.slug}`
+            href: `/gallery/${loc.continentSlug}/${loc.slug}`,
+            focalX: loc.focalX || 50,
+            focalY: loc.focalY || 50,
+            zoom: loc.zoom || 1.0
         }))
         : [
             {
                 name: 'Masai Mara',
                 location: 'Kenya',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/africa/masai-mara'
+                href: '/gallery/africa/masai-mara',
+                focalX: 50,
+                focalY: 50,
+                zoom: 1.0
             },
             {
                 name: 'Nairobi National Park',
                 location: 'Kenya',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/africa/nairobi-national-park'
+                href: '/gallery/africa/nairobi-national-park',
+                focalX: 50,
+                focalY: 50,
+                zoom: 1.0
             },
             {
                 name: 'Ranthambore',
                 location: 'India',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/asia/ranthambore'
+                href: '/gallery/asia/ranthambore',
+                focalX: 50,
+                focalY: 50,
+                zoom: 1.0
             },
             {
                 name: 'Kaziranga',
                 location: 'India',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/asia/kaziranga'
+                href: '/gallery/asia/kaziranga',
+                focalX: 50,
+                focalY: 50,
+                zoom: 1.0
             },
         ];
 
@@ -52,13 +67,19 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {featuredParks.map((park) => (
                         <Link key={park.name} href={park.href} className="relative group block aspect-[4/5] rounded-card overflow-hidden shadow-lg">
-                            <Image
-                                src={park.image}
-                                alt={park.name}
-                                fill
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                            />
+                            <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
+                                <Image
+                                    src={park.image}
+                                    alt={park.name}
+                                    fill
+                                    style={{
+                                        objectPosition: `${park.focalX}% ${park.focalY}%`,
+                                        transform: `scale(${park.zoom})`
+                                    }}
+                                    className="object-cover"
+                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                />
+                            </div>
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
                             <div className="absolute bottom-6 left-6 right-6 z-20">
                                 <span className="text-[10px] text-safari-gold font-bold uppercase tracking-widest mb-1 block">{park.location}</span>

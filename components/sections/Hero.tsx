@@ -10,19 +10,21 @@ interface HeroProps {
     title: string;
     subtitle: string;
     backgroundImage?: string;
+    featuredLocations?: any[];
 }
 
-export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
+export function Hero({ title, subtitle, backgroundImage, featuredLocations = [] }: HeroProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [prevImageIndex, setPrevImageIndex] = useState<number | null>(null);
     const [isContentVisible, setIsContentVisible] = useState(false);
 
+    // Use local hero images as primary source
     const heroImages = [
-        "/images/hero-uploads/hero-selected-1.jpg",
-        "/images/hero-uploads/hero-selected-2.jpg",
-        "/images/hero-uploads/hero-selected-3.jpg",
-        "/images/hero-uploads/hero-selected-4.jpg",
-        "/images/hero-uploads/hero-selected-5.jpg",
+        { src: "/images/hero-uploads/hero-selected-1.jpg", focalX: 50, focalY: 50, zoom: 1.0 },
+        { src: "/images/hero-uploads/hero-selected-2.jpg", focalX: 50, focalY: 50, zoom: 1.0 },
+        { src: "/images/hero-uploads/hero-selected-3.jpg", focalX: 50, focalY: 50, zoom: 1.0 },
+        { src: "/images/hero-uploads/hero-selected-4.jpg", focalX: 50, focalY: 50, zoom: 1.0 },
+        { src: "/images/hero-uploads/hero-selected-5.jpg", focalX: 50, focalY: 50, zoom: 1.0 },
     ];
 
     useEffect(() => {
@@ -52,10 +54,14 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
                 {prevImageIndex !== null && (
                     <div className="absolute inset-0 animate-hero-fade-out">
                         <Image
-                            src={normalizeImageUrl(heroImages[prevImageIndex])}
+                            src={normalizeImageUrl(heroImages[prevImageIndex].src)}
                             alt="Safari Landscape"
                             fill
-                            className="object-cover object-center"
+                            style={{
+                                objectPosition: `${heroImages[prevImageIndex].focalX}% ${heroImages[prevImageIndex].focalY}%`,
+                                transform: `scale(${heroImages[prevImageIndex].zoom})`
+                            }}
+                            className="object-cover"
                             sizes="100vw"
                             quality={75}
                         />
@@ -68,10 +74,14 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
                     className="absolute inset-0 animate-hero-fade-in"
                 >
                     <Image
-                        src={normalizeImageUrl(heroImages[currentImageIndex])}
+                        src={normalizeImageUrl(heroImages[currentImageIndex].src)}
                         alt="Safari Landscape"
                         fill
-                        className="object-cover object-center"
+                        style={{
+                            objectPosition: `${heroImages[currentImageIndex].focalX}% ${heroImages[currentImageIndex].focalY}%`,
+                            transform: `scale(${heroImages[currentImageIndex].zoom})`
+                        }}
+                        className="object-cover"
                         priority={currentImageIndex === 0}
                         sizes="100vw"
                         quality={75}
@@ -96,10 +106,10 @@ export function Hero({ title, subtitle, backgroundImage }: HeroProps) {
                         {subtitle}
                     </p>
                     <div className="flex flex-col sm:flex-row items-center md:items-end justify-center md:justify-end gap-4">
-                        <Link href="/contact" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto shadow-2xl shadow-safari-gold/20 transform hover:scale-105">
+                        <Link href="/contact" className="btn-primary px-8 py-4 text-lg w-full sm:w-auto shadow-2xl shadow-safari-gold/20 transform hover:scale-105 border-2 border-transparent">
                             Plan My Safari
                         </Link>
-                        <Link href="/gallery" className="btn-outline border-white text-white hover:bg-white hover:text-neutral-charcoal px-8 py-4 text-lg w-full sm:w-auto transform hover:scale-105">
+                        <Link href="/gallery" className="btn-outline border-white text-white hover:bg-forest-green hover:border-forest-green hover:text-white px-8 py-4 text-lg w-full sm:w-auto transform hover:scale-105">
                             View Gallery
                         </Link>
                     </div>

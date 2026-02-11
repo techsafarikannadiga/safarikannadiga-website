@@ -7,6 +7,7 @@ import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { Preloader } from '@/components/ui/Preloader';
 import { getGeneralSettings } from '@/lib/content';
+import { ImageProtectionProvider } from '@/components/providers/ImageProtectionProvider';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -69,8 +70,9 @@ export default async function RootLayout({
         <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
             <body className="flex min-h-screen flex-col">
                 <Preloader />
+                <ImageProtectionProvider />
                 <Header settings={settings} />
-                <main className="flex-grow">{children}</main>
+                <main className="flex-grow animate-fade-in">{children}</main>
                 <Footer settings={settings} />
                 <BackToTop />
                 <WhatsAppButton />

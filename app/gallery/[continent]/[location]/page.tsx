@@ -97,6 +97,10 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
                             src={coverImage}
                             alt={location.name}
                             fill
+                            style={{
+                                objectPosition: `${location.focalX || 50}% ${location.focalY || 50}%`,
+                                transform: `scale(${location.zoom || 1.0})`
+                            }}
                             className="object-cover"
                             sizes="(max-width: 1024px) 100vw, 50vw"
                             priority

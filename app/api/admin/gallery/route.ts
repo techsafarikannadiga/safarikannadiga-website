@@ -71,16 +71,15 @@ export async function DELETE(req: Request) {
     }
 }
 
-// PATCH: Set Cover Photo
 export async function PATCH(req: Request) {
     try {
-        const { continent, location, imagePath } = await req.json();
+        const { continent, location, imagePath, focalPoint } = await req.json();
 
         if (!continent || !imagePath) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const result = await setCoverPhoto(continent, imagePath, location);
+        const result = await setCoverPhoto(continent, imagePath, location, focalPoint);
 
         if (result.success) {
             // Revalidate everything for immediate reflection

@@ -36,7 +36,7 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 rounded-card bg-safari-gold text-white font-semibold transition-all duration-300 hover:bg-safari-gold-dark hover:shadow-card-hover active:scale-95;
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-card bg-safari-gold text-white font-semibold transition-all duration-300 hover:bg-sunset-orange hover:shadow-card-hover active:scale-95;
   }
 
   .btn-secondary {

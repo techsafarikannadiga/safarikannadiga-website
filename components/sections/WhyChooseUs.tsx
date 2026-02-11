@@ -32,7 +32,22 @@ const features = [
     }
 ];
 
-export function WhyChooseUs() {
+interface WhyChooseUsProps {
+    stats?: {
+        imagesCount: number;
+        toursCount: number;
+        testimonialsCount: number;
+    }
+}
+
+export function WhyChooseUs({ stats }: WhyChooseUsProps) {
+    // Fallback stats if not provided
+    const displayStats = stats || {
+        imagesCount: 500,
+        toursCount: 15,
+        testimonialsCount: 50
+    };
+
     return (
         <section className="section-padding bg-forest-green text-white">
             <Container>
@@ -64,18 +79,18 @@ export function WhyChooseUs() {
                         {/* Stats overlay */}
                         <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-card z-20 flex justify-around text-center">
                             <div>
-                                <p className="text-2xl font-bold text-safari-gold">500+</p>
-                                <p className="text-[10px] uppercase font-bold text-white/60">Guests Served</p>
+                                <p className="text-2xl font-bold text-safari-gold">{displayStats.imagesCount}+</p>
+                                <p className="text-[10px] uppercase font-bold text-white/60">Wildlife Photos</p>
                             </div>
                             <div className="w-px h-10 bg-white/20" />
                             <div>
-                                <p className="text-2xl font-bold text-safari-gold">10+</p>
-                                <p className="text-[10px] uppercase font-bold text-white/60">Years Experience</p>
+                                <p className="text-2xl font-bold text-safari-gold">{displayStats.toursCount}+</p>
+                                <p className="text-[10px] uppercase font-bold text-white/60">Annual Tours</p>
                             </div>
                             <div className="w-px h-10 bg-white/20" />
                             <div>
-                                <p className="text-2xl font-bold text-safari-gold">100%</p>
-                                <p className="text-[10px] uppercase font-bold text-white/60">Ethical Sighting</p>
+                                <p className="text-2xl font-bold text-safari-gold">{displayStats.testimonialsCount}+</p>
+                                <p className="text-[10px] uppercase font-bold text-white/60">Happy Reviews</p>
                             </div>
                         </div>
                     </div>

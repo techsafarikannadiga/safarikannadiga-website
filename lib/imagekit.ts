@@ -29,10 +29,20 @@ import ImageKit from '@imagekit/nodejs';
 
 // Initialize ImageKit client
 const imagekit = new ImageKit({
+    // @ts-ignore
+    publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || '',
     privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
     // @ts-ignore - urlEndpoint is required for SDK to work but missing in types
     urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/safarikannadiga',
 });
+
+/**
+ * Get authentication parameters for client-side uploads
+ */
+export function getAuthParams() {
+    // @ts-ignore - v7 SDK: auth params is under helper
+    return imagekit.helper.getAuthenticationParameters();
+}
 
 
 

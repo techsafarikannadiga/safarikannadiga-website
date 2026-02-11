@@ -137,7 +137,7 @@ export async function updateLocationInDB(
     return { success: true };
 }
 
-export async function getCoversFromDB(): Promise<Record<string, string>> {
+export async function getCoversFromDB(): Promise<Record<string, { cover_url: string; focal_x: number; focal_y: number; zoom: number }>> {
     if (!supabase) return {};
 
     const { data, error } = await supabase
@@ -149,23 +149,40 @@ export async function getCoversFromDB(): Promise<Record<string, string>> {
         return {};
     }
 
-    const covers: Record<string, string> = {};
-    (data || []).forEach((cover: GalleryCoverDB) => {
-        covers[cover.location_key] = cover.cover_url;
+    const covers: Record<string, { cover_url: string; focal_x: number; focal_y: number; zoom: number }> = {};
+    (data || []).forEach((cover: any) => {
+        covers[cover.location_key] = {
+            cover_url: cover.cover_url,
+            focal_x: cover.focal_x ?? 50,
+            focal_y: cover.focal_y ?? 50,
+            zoom: cover.zoom ?? 1.0,
+        };
     });
     return covers;
 }
 
-export async function setCoverInDB(locationKey: string, coverUrl: string): Promise<{ success: boolean; error?: string }> {
+export async function setCoverInDB(
+    locationKey: string,
+    coverUrl: string,
+    focalPoint?: { x: number; y: number; zoom: number }
+): Promise<{ success: boolean; error?: string }> {
     if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
 
-    // Upsert - insert or update if exists
+    const upsertData: any = {
+        location_key: locationKey,
+        cover_url: coverUrl,
+        updated_at: new Date().toISOString()
+    };
+
+    if (focalPoint) {
+        upsertData.focal_x = focalPoint.x;
+        upsertData.focal_y = focalPoint.y;
+        upsertData.zoom = focalPoint.zoom;
+    }
+
     const { error } = await supabaseAdmin
         .from('gallery_covers')
-        .upsert(
-            { location_key: locationKey, cover_url: coverUrl, updated_at: new Date().toISOString() },
-            { onConflict: 'location_key' }
-        );
+        .upsert(upsertData, { onConflict: 'location_key' });
 
     if (error) {
         console.error('Error setting cover:', error);
@@ -188,3 +205,35 @@ export async function deleteCoverFromDB(locationKey: string): Promise<{ success:
     }
     return { success: true };
 }
+
+// Featured location management
+export async function toggleLocationFeatured(
+    locationId: string,
+    isFeatured: boolean
+): Promise<{ success: boolean; error?: string }> {
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
+        .from('gallery_locations')
+        .update({ is_featured: isFeatured, featured_order: isFeatured ? 0 : 0 })
+        .eq('id', locationId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+}
+
+export async function updateFeaturedOrder(
+    locationId: string,
+    order: number
+): Promise<{ success: boolean; error?: string }> {
+    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+
+    const { error } = await supabaseAdmin
+        .from('gallery_locations')
+        .update({ featured_order: order })
+        .eq('id', locationId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+}
+

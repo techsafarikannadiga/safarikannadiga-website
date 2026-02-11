@@ -7,11 +7,15 @@ import { FeaturedLocation } from '@/lib/gallery-cloud';
 interface DestinationGuide {
     title: string;
     slug: string;
+    continentSlug: string;
     location: string;
     image: string;
     excerpt: string;
     wildlife: string[];
     bestTime: string;
+    focalX: number;
+    focalY: number;
+    zoom: number;
 }
 
 // Fallback destination guides when no data from backend
@@ -19,29 +23,41 @@ const fallbackGuides: DestinationGuide[] = [
     {
         title: "Masai Mara: Witness the Great Migration",
         slug: "masai-mara",
+        continentSlug: "africa",
         location: "Kenya",
         image: "/images/placeholder-safari.jpg",
         excerpt: "Home to the world-famous Great Migration, the Masai Mara offers unparalleled wildlife viewing with over 1.5 million wildebeest crossing the Mara River.",
         wildlife: ["Lions", "Leopards", "Cheetahs", "Elephants", "Wildebeest"],
-        bestTime: "July - October"
+        bestTime: "July - October",
+        focalX: 50,
+        focalY: 50,
+        zoom: 1.0
     },
     {
         title: "Nairobi National Park: Urban Safari",
         slug: "nairobi-national-park",
+        continentSlug: "africa",
         location: "Kenya",
         image: "/images/placeholder-safari.jpg",
         excerpt: "The only national park within a capital city, offering an incredible urban wildlife experience with the Nairobi skyline as a backdrop.",
         wildlife: ["Lions", "Rhinos", "Buffalos", "Giraffes", "Zebras"],
-        bestTime: "June - October"
+        bestTime: "June - October",
+        focalX: 50,
+        focalY: 50,
+        zoom: 1.0
     },
     {
         title: "Bandhavgarh: Land of Tigers",
         slug: "bandhavgarh",
+        continentSlug: "asia",
         location: "Madhya Pradesh, India",
         image: "/images/placeholder-safari.jpg",
         excerpt: "With the highest density of Bengal tigers in India, Bandhavgarh offers near-guaranteed tiger sightings set against dramatic forests and ancient ruins.",
         wildlife: ["Bengal Tigers", "Leopards", "Sloth Bears", "Sambar Deer", "Langurs"],
-        bestTime: "October - June"
+        bestTime: "October - June",
+        focalX: 50,
+        focalY: 50,
+        zoom: 1.0
     }
 ];
 
@@ -57,11 +73,15 @@ export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
         destinationGuides = locations.slice(0, 3).map(loc => ({
             title: loc.name,
             slug: loc.slug,
+            continentSlug: loc.continentSlug,
             location: loc.country || loc.continentSlug,
             image: loc.coverImage,
             excerpt: loc.description || `Explore the stunning wildlife and landscapes of ${loc.name}.`,
             wildlife: Array.isArray(loc.wildlife) ? loc.wildlife : (loc.wildlife ? String(loc.wildlife).split(',').map(w => w.trim()) : ['Wildlife']),
-            bestTime: "Year-round"
+            bestTime: "Year-round",
+            focalX: loc.focalX || 50,
+            focalY: loc.focalY || 50,
+            zoom: loc.zoom || 1.0
         }));
     } else {
         destinationGuides = fallbackGuides;
@@ -87,20 +107,26 @@ export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {destinationGuides.map((guide) => (
-                        <article key={guide.slug} className="group bg-white rounded-card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-500 hover:-translate-y-2 border border-neutral-gray/10">
+                        <article key={guide.slug} className="group bg-white rounded-card overflow-hidden shadow-card hover:shadow-xl hover:shadow-safari-gold/10 transition-all duration-500 hover:-translate-y-2 border border-neutral-gray/10 hover:border-safari-gold/30">
                             {/* Image */}
                             <div className="relative h-56 overflow-hidden">
-                                <Image
-                                    src={normalizeImageUrl(guide.image)}
-                                    alt={guide.title}
-                                    fill
-                                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                    sizes="(max-width: 1024px) 100vw, 33vw"
-                                />
+                                <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
+                                    <Image
+                                        src={normalizeImageUrl(guide.image)}
+                                        alt={guide.title}
+                                        fill
+                                        style={{
+                                            objectPosition: `${guide.focalX}% ${guide.focalY}%`,
+                                            transform: `scale(${guide.zoom})`
+                                        }}
+                                        className="object-cover"
+                                        sizes="(max-width: 1024px) 100vw, 33vw"
+                                    />
+                                </div>
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
                                 {/* Location Badge */}
-                                <div className="absolute top-4 left-4 bg-safari-gold text-white px-3 py-1 rounded-full text-sm font-bold">
+                                <div className="absolute top-4 left-4 bg-forest-green text-white px-3 py-1 rounded-full text-sm font-bold shadow-md">
                                     {guide.location}
                                 </div>
 
@@ -134,7 +160,7 @@ export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
 
                                 {/* CTA */}
                                 <Link
-                                    href={`/gallery/africa/${guide.slug}`}
+                                    href={`/gallery/${guide.continentSlug}/${guide.slug}`}
                                     className="text-safari-gold font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all"
                                 >
                                     View Photos & Details

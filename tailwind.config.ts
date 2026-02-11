@@ -81,6 +81,8 @@ const config: Config = {
         'horizon': 'horizon 1.5s ease-out 0.3s both',
         'draw-path': 'drawPath 1s ease-out 0.8s both',
         'draw-path-delay': 'drawPath 0.8s ease-out 1.2s both',
+        'marquee': 'marquee var(--marquee-duration, 40s) linear infinite',
+        'marquee-reverse': 'marquee-reverse var(--marquee-duration, 40s) linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -145,6 +147,14 @@ const config: Config = {
         drawPath: {
           '0%': { strokeDasharray: '100', strokeDashoffset: '100', opacity: '0' },
           '100%': { strokeDasharray: '100', strokeDashoffset: '0', opacity: '1' },
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'marquee-reverse': {
+          '0%': { transform: 'translateX(-50%)' },
+          '100%': { transform: 'translateX(0%)' },
         },
       },
     },

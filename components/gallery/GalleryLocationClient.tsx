@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { normalizeImageUrl } from '@/lib/image-utils';
 import { GalleryImage } from '@/lib/gallery-cloud';
+import { ProtectedImage } from '@/components/ui/ProtectedImage';
+import { useImageProtection } from '@/hooks/use-image-protection';
 
 interface Props {
     images: GalleryImage[];
@@ -103,7 +104,7 @@ export default function GalleryLocationClient({ images, title }: Props) {
                             className="break-inside-avoid rounded-card overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative"
                             onClick={() => setIndex(i)}
                         >
-                            <Image
+                            <ProtectedImage
                                 src={photo.src}
                                 alt={photo.alt}
                                 width={800}
@@ -139,6 +140,23 @@ export default function GalleryLocationClient({ images, title }: Props) {
                 slides={displayPhotos}
                 open={index >= 0}
                 close={() => setIndex(-1)}
+                render={{
+                    slide: ({ slide, rect }) => (
+                        <div onContextMenu={(e) => e.preventDefault()} className="select-none">
+                            <img
+                                src={slide.src}
+                                alt={slide.alt}
+                                style={{
+                                    maxHeight: rect.height,
+                                    maxWidth: rect.width,
+                                    objectFit: "contain",
+                                    pointerEvents: "none" // Prevents drag/touch interaction with img
+                                }}
+                                draggable={false}
+                            />
+                        </div>
+                    )
+                }}
             />
         </>
     );

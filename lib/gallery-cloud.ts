@@ -159,6 +159,11 @@ export interface GalleryLocation {
     wildlife: string[];
     coverImage: string;
     imageCount: number;
+    focalX: number;
+    focalY: number;
+    zoom: number;
+    isFeatured: boolean;
+    featuredOrder: number;
 }
 
 export interface GalleryContinent {
@@ -257,15 +262,36 @@ async function getGalleryConfig() {
     }
 }
 
-async function getGalleryCovers(): Promise<Record<string, string>> {
-    const rawCovers = isSupabaseConfigured() ? await getCoversFromDB() : getGalleryCoversLocal();
+// Internal cover data type
+interface CoverData {
+    cover_url: string;
+    focal_x: number;
+    focal_y: number;
+    zoom: number;
+}
 
-    // Normalize keys to lowercase for case-insensitive lookup
-    const normalized: Record<string, string> = {};
-    Object.entries(rawCovers).forEach(([key, value]) => {
-        normalized[key.toLowerCase().trim()] = value;
-    });
-    return normalized;
+async function getGalleryCovers(): Promise<Record<string, CoverData>> {
+    if (isSupabaseConfigured()) {
+        const rawCovers = await getCoversFromDB();
+        const normalized: Record<string, CoverData> = {};
+        Object.entries(rawCovers).forEach(([key, value]) => {
+            normalized[key.toLowerCase().trim()] = value;
+        });
+        return normalized;
+    } else {
+        // Fallback to local file (no focal point data)
+        const rawCovers = getGalleryCoversLocal();
+        const normalized: Record<string, CoverData> = {};
+        Object.entries(rawCovers).forEach(([key, value]) => {
+            normalized[key.toLowerCase().trim()] = {
+                cover_url: value,
+                focal_x: 50,
+                focal_y: 50,
+                zoom: 1.0,
+            };
+        });
+        return normalized;
+    }
 }
 
 /**
@@ -350,7 +376,8 @@ export async function getContinents(): Promise<GalleryContinent[]> {
 
             // Normalize keys for robust matching
             const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
-            const savedCover = savedCovers[coverKey];
+            const savedCoverData = savedCovers[coverKey];
+            const savedCover = savedCoverData?.cover_url;
 
             // Improved robust matching
             const isUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
@@ -380,7 +407,12 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             return {
                 ...loc,
                 coverImage,
-                imageCount: images.length
+                imageCount: images.length,
+                focalX: savedCoverData?.focal_x ?? 50,
+                focalY: savedCoverData?.focal_y ?? 50,
+                zoom: savedCoverData?.zoom ?? 1.0,
+                isFeatured: loc.is_featured ?? false,
+                featuredOrder: loc.featured_order ?? 0,
             };
         }));
 
@@ -398,16 +430,16 @@ export async function getContinents(): Promise<GalleryContinent[]> {
                 const folderPath = getLocationFolderPath(continent.name, loc.name);
                 const images = await getImageKitImages(folderPath);
                 const match = images.find(img =>
-                    normalizeUrl(img.src) === normalizeUrl(savedContinentCover) ||
-                    img.publicId === savedContinentCover ||
-                    img.filename === savedContinentCover
+                    normalizeUrl(img.src) === normalizeUrl(savedContinentCover.cover_url) ||
+                    img.publicId === savedContinentCover.cover_url ||
+                    img.filename === savedContinentCover.cover_url
                 );
                 if (match) {
                     matchedUrl = match.src;
                     break;
                 }
             }
-            continentCover = matchedUrl || (savedContinentCover.startsWith('http') ? savedContinentCover : continentCover);
+            continentCover = matchedUrl || (savedContinentCover.cover_url.startsWith('http') ? savedContinentCover.cover_url : continentCover);
         } else if (continentCoverFromLocation) {
             continentCover = continentCoverFromLocation;
         } else if (continent.coverImage) {
@@ -493,7 +525,8 @@ export async function getFullGalleryStructure() {
             const folderPath = getLocationFolderPath(continent.name, loc.name);
             const images = await getImageKitImages(folderPath);
             const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
-            const savedCover = savedCovers[coverKey];
+            const savedCoverData = savedCovers[coverKey];
+            const savedCover = savedCoverData?.cover_url;
 
             const isCoverUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
 
@@ -516,7 +549,8 @@ export async function getFullGalleryStructure() {
 
             // Continent cover check
             const continentKey = continent.name.toLowerCase().trim();
-            const savedContinentCover = savedCovers[continentKey];
+            const savedContinentCoverData = savedCovers[continentKey];
+            const savedContinentCover = savedContinentCoverData?.cover_url;
 
             return {
                 name: loc.name,
@@ -525,12 +559,13 @@ export async function getFullGalleryStructure() {
                 description: loc.description,
                 wildlife: loc.wildlife || [],
                 coverImage: currentCover,
+                isFeatured: loc.is_featured ?? false,
                 images: images.map(img => ({
                     name: img.filename,
                     path: img.publicId || img.src,
                     url: img.src,
                     isCover: img.src === currentCover || (savedCover && (normalizeUrl(img.src) === normalizeUrl(savedCover) || img.publicId === savedCover)),
-                    isContinentCover: savedContinentCover && (normalizeUrl(img.src) === normalizeUrl(savedContinentCover) || img.publicId === savedContinentCover)
+                    isContinentCover: savedContinentCover ? (normalizeUrl(img.src) === normalizeUrl(savedContinentCover) || img.publicId === savedContinentCover) : false
                 }))
             };
         }))
@@ -540,7 +575,12 @@ export async function getFullGalleryStructure() {
 /**
  * Set cover photo for a location
  */
-export async function setCoverPhoto(continentName: string, imagePath: string, locationName?: string): Promise<{ success: boolean; error?: string }> {
+export async function setCoverPhoto(
+    continentName: string,
+    imagePath: string,
+    locationName?: string,
+    focalPoint?: { x: number; y: number; zoom: number }
+): Promise<{ success: boolean; error?: string }> {
     try {
         // If locationName is provided, use "Continent/Location" key, else use just "Continent" key
         const key = locationName
@@ -548,7 +588,7 @@ export async function setCoverPhoto(continentName: string, imagePath: string, lo
             : continentName.trim().toLowerCase();
 
         if (isSupabaseConfigured()) {
-            const result = await setCoverInDB(key, imagePath);
+            const result = await setCoverInDB(key, imagePath, focalPoint);
             if (result.success) clearCache();
             return result;
         } else {
@@ -917,6 +957,10 @@ export interface FeaturedLocation {
     wildlife: string[];
     coverImage: string;
     imageCount: number;
+    focalX: number;
+    focalY: number;
+    zoom: number;
+    isFeatured: boolean;
 }
 
 export async function getFeaturedLocations(limit: number = 4): Promise<FeaturedLocation[]> {
@@ -932,16 +976,30 @@ export async function getFeaturedLocations(limit: number = 4): Promise<FeaturedL
             description: loc.description,
             wildlife: loc.wildlife,
             coverImage: loc.coverImage,
-            imageCount: loc.imageCount
+            imageCount: loc.imageCount,
+            focalX: loc.focalX,
+            focalY: loc.focalY,
+            zoom: loc.zoom,
+            isFeatured: loc.isFeatured,
+            featuredOrder: loc.featuredOrder,
         }))
     );
 
-    // Sort by image count (locations with most images first)
-    // Then filter out locations without cover images
-    return allLocations
-        .filter(loc => loc.coverImage && loc.coverImage !== '/images/placeholder-safari.jpg')
-        .sort((a, b) => b.imageCount - a.imageCount)
-        .slice(0, limit);
+    // Filter out locations without cover images
+    const validLocations = allLocations.filter(
+        loc => loc.coverImage && loc.coverImage !== '/images/placeholder-safari.jpg'
+    );
+
+    // Pinned locations first (sorted by featured_order), then auto-fill by image count
+    const pinned = validLocations
+        .filter(loc => loc.isFeatured)
+        .sort((a, b) => a.featuredOrder - b.featuredOrder);
+
+    const autoFill = validLocations
+        .filter(loc => !loc.isFeatured)
+        .sort((a, b) => b.imageCount - a.imageCount);
+
+    return [...pinned, ...autoFill].slice(0, limit);
 }
 
 /**
