@@ -8,6 +8,7 @@ interface DestinationGuide {
     title: string;
     slug: string;
     continentSlug: string;
+    countrySlug: string;
     location: string;
     image: string;
     excerpt: string;
@@ -24,6 +25,7 @@ const fallbackGuides: DestinationGuide[] = [
         title: "Masai Mara: Witness the Great Migration",
         slug: "masai-mara",
         continentSlug: "africa",
+        countrySlug: "kenya",
         location: "Kenya",
         image: "/images/placeholder-safari.jpg",
         excerpt: "Home to the world-famous Great Migration, the Masai Mara offers unparalleled wildlife viewing with over 1.5 million wildebeest crossing the Mara River.",
@@ -37,6 +39,7 @@ const fallbackGuides: DestinationGuide[] = [
         title: "Nairobi National Park: Urban Safari",
         slug: "nairobi-national-park",
         continentSlug: "africa",
+        countrySlug: "kenya",
         location: "Kenya",
         image: "/images/placeholder-safari.jpg",
         excerpt: "The only national park within a capital city, offering an incredible urban wildlife experience with the Nairobi skyline as a backdrop.",
@@ -50,6 +53,7 @@ const fallbackGuides: DestinationGuide[] = [
         title: "Bandhavgarh: Land of Tigers",
         slug: "bandhavgarh",
         continentSlug: "asia",
+        countrySlug: "india",
         location: "Madhya Pradesh, India",
         image: "/images/placeholder-safari.jpg",
         excerpt: "With the highest density of Bengal tigers in India, Bandhavgarh offers near-guaranteed tiger sightings set against dramatic forests and ancient ruins.",
@@ -65,6 +69,8 @@ interface FeaturedDestinationProps {
     locations: FeaturedLocation[];
 }
 
+import { toSlug } from '@/lib/utils/slugify';
+
 export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
     // Transform backend locations to component format
     let destinationGuides: DestinationGuide[] = [];
@@ -74,6 +80,7 @@ export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
             title: loc.name,
             slug: loc.slug,
             continentSlug: loc.continentSlug,
+            countrySlug: toSlug(loc.country || 'Kenya'), // Safe fallback or derive
             location: loc.country || loc.continentSlug,
             image: loc.coverImage,
             excerpt: loc.description || `Explore the stunning wildlife and landscapes of ${loc.name}.`,
@@ -160,7 +167,7 @@ export function FeaturedDestinations({ locations }: FeaturedDestinationProps) {
 
                                 {/* CTA */}
                                 <Link
-                                    href={`/gallery/${guide.continentSlug}/${guide.slug}`}
+                                    href={`/gallery/${guide.continentSlug}/${guide.countrySlug}/${guide.slug}`}
                                     className="text-safari-gold font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all"
                                 >
                                     View Photos & Details

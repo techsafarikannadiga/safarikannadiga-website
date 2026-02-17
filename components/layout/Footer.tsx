@@ -11,16 +11,16 @@ interface FooterProps {
 
 const footerLinks = {
     africanParks: [
-        { name: 'Masai Mara', href: '/gallery/africa/masai-mara' },
-        { name: 'Serengeti', href: '/gallery/africa/serengeti' },
-        { name: 'Amboseli', href: '/gallery/africa/amboseli' },
-        { name: 'Ngorongoro Crater', href: '/gallery/africa/ngorongoro' },
+        { name: 'Masai Mara', href: '/gallery/africa/kenya/masai-mara' },
+        { name: 'Serengeti', href: '/gallery/africa/tanzania/serengeti' },
+        { name: 'Amboseli', href: '/gallery/africa/kenya/amboseli' },
+        { name: 'Ngorongoro Crater', href: '/gallery/africa/tanzania/ngorongoro' },
     ],
     indianParks: [
-        { name: 'Ranthambore', href: '/gallery/asia/ranthambore' },
-        { name: 'Kabini', href: '/gallery/asia/kabini' },
-        { name: 'Bandipur', href: '/gallery/asia/bandipur' },
-        { name: 'Bandhavgarh', href: '/gallery/asia/bandhavgarh' },
+        { name: 'Ranthambore', href: '/gallery/asia/india/ranthambore' },
+        { name: 'Kabini', href: '/gallery/asia/india/kabini' },
+        { name: 'Bandipur', href: '/gallery/asia/india/bandipur' },
+        { name: 'Bandhavgarh', href: '/gallery/asia/india/bandhavgarh' },
     ],
     quickLinks: [
         { name: 'About Us', href: '/about' },

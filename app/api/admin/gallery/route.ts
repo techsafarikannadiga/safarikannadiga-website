@@ -27,12 +27,13 @@ export async function POST(req: Request) {
         const file = formData.get('file') as File;
         const continent = formData.get('continent') as string;
         const location = formData.get('location') as string;
+        const country = formData.get('country') as string || undefined; // Optional for now
 
         if (!file || !continent || !location) {
             return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400 });
         }
 
-        const result = await saveImage(continent, location, file);
+        const result = await saveImage(continent, location, file, country);
 
         if (result.success) {
             revalidatePath('/', 'layout');

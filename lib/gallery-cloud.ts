@@ -665,12 +665,13 @@ async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: 
 export async function saveImage(
     continentName: string,
     locationName: string,
-    file: File
+    file: File,
+    countryName?: string
 ): Promise<{ success: boolean; path?: string; url?: string; error?: string }> {
     try {
         const bytes = await file.arrayBuffer();
         const originalBuffer = Buffer.from(bytes);
-        const folder = getLocationFolderPath(continentName, locationName);
+        const folder = getLocationFolderPath(continentName, locationName, countryName);
 
         // Compress image before upload to save storage
         const { data: compressedBuffer, name: compressedName } = await compressImage(originalBuffer, file.name);

@@ -11,7 +11,7 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
             name: loc.name,
             location: loc.country,
             image: loc.coverImage,
-            href: `/gallery/${loc.continentSlug}/${loc.slug}`,
+            href: `/gallery/${loc.continentSlug}/${loc.country?.toLowerCase().replace(/\s+/g, '-') || 'kenya'}/${loc.slug}`,
             focalX: loc.focalX || 50,
             focalY: loc.focalY || 50,
             zoom: loc.zoom || 1.0
@@ -21,7 +21,7 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
                 name: 'Masai Mara',
                 location: 'Kenya',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/africa/masai-mara',
+                href: '/gallery/africa/kenya/masai-mara',
                 focalX: 50,
                 focalY: 50,
                 zoom: 1.0
@@ -30,7 +30,7 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
                 name: 'Nairobi National Park',
                 location: 'Kenya',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/africa/nairobi-national-park',
+                href: '/gallery/africa/kenya/nairobi-national-park',
                 focalX: 50,
                 focalY: 50,
                 zoom: 1.0
@@ -39,7 +39,7 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
                 name: 'Ranthambore',
                 location: 'India',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/asia/ranthambore',
+                href: '/gallery/asia/india/ranthambore',
                 focalX: 50,
                 focalY: 50,
                 zoom: 1.0
@@ -48,7 +48,7 @@ export function Destinations({ locations }: { locations: FeaturedLocation[] }) {
                 name: 'Kaziranga',
                 location: 'India',
                 image: '/images/placeholder-safari.jpg',
-                href: '/gallery/asia/kaziranga',
+                href: '/gallery/asia/india/kaziranga',
                 focalX: 50,
                 focalY: 50,
                 zoom: 1.0
