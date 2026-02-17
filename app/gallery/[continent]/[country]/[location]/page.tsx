@@ -1,23 +1,27 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/Container';
 import { getContinents, getContinent, getLocation, getImages } from '@/lib/gallery-cloud';
 import GalleryLocationClient from '@/components/gallery/GalleryLocationClient';
+import { toSlug } from '@/lib/utils/slugify';
 
 // Force dynamic rendering to ensure cover photo changes reflect immediately
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Enable ISR with 1-hour cache
+export const revalidate = 3600;
 
 // Generate static params for all locations at build time
 export async function generateStaticParams() {
     const continents = await getContinents();
-    const params: { continent: string; location: string }[] = [];
+    const params: { continent: string; country: string; location: string }[] = [];
 
     continents.forEach((continent) => {
         continent.locations.forEach((location) => {
+            const countrySlug = toSlug(location.country || 'other-destinations');
             params.push({
                 continent: continent.slug,
+                country: countrySlug,
                 location: location.slug,
             });
         });
@@ -26,13 +30,19 @@ export async function generateStaticParams() {
     return params;
 }
 
-export default async function LocationGalleryPage({ params }: { params: Promise<{ continent: string; location: string }> }) {
-    const { continent: continentSlug, location: locationSlug } = await params;
+export default async function LocationGalleryPage({ params }: { params: Promise<{ continent: string; country: string; location: string }> }) {
+    const { continent: continentSlug, country: countrySlug, location: locationSlug } = await params;
 
     const continent = await getContinent(continentSlug);
     const location = await getLocation(continentSlug, locationSlug);
 
     if (!continent || !location) return notFound();
+
+    // STRICT VALIDATION: Ensure the route country matches the location's actual country
+    const actualCountrySlug = toSlug(location.country || 'other-destinations');
+    if (actualCountrySlug !== countrySlug) {
+        return notFound(); // Prevent accessing via wrong country URL
+    }
 
     const images = await getImages(continentSlug, locationSlug);
     const coverImage = location.coverImage || '/images/placeholder-safari.jpg';
@@ -48,6 +58,10 @@ export default async function LocationGalleryPage({ params }: { params: Promise<
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                         <Link href={`/gallery/${continentSlug}`} className="hover:text-safari-gold transition-colors">{continent.name}</Link>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        <Link href={`/gallery/${continentSlug}/${countrySlug}`} className="hover:text-safari-gold transition-colors">{location.country || 'Other'}</Link>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>

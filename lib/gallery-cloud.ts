@@ -263,14 +263,14 @@ async function getGalleryConfig() {
 }
 
 // Internal cover data type
-interface CoverData {
+export interface CoverData {
     cover_url: string;
     focal_x: number;
     focal_y: number;
     zoom: number;
 }
 
-async function getGalleryCovers(): Promise<Record<string, CoverData>> {
+export async function getGalleryCovers(): Promise<Record<string, CoverData>> {
     if (isSupabaseConfigured()) {
         const rawCovers = await getCoversFromDB();
         const normalized: Record<string, CoverData> = {};
@@ -369,8 +369,9 @@ export async function getContinents(): Promise<GalleryContinent[]> {
         let totalImages = 0;
         let continentCoverFromLocation = '';
 
-        const locationsWithCounts = await Promise.all(continent.locations.map(async (loc: any) => {
-            const folderPath = getLocationFolderPath(continent.name, loc.name);
+        const locationsWithCounts = [];
+        for (const loc of continent.locations) {
+            const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
             const images = await getImageKitImages(folderPath);
             totalImages += images.length;
 
@@ -404,7 +405,7 @@ export async function getContinents(): Promise<GalleryContinent[]> {
                 continentCoverFromLocation = coverImage;
             }
 
-            return {
+            locationsWithCounts.push({
                 ...loc,
                 coverImage,
                 imageCount: images.length,
@@ -413,8 +414,8 @@ export async function getContinents(): Promise<GalleryContinent[]> {
                 zoom: savedCoverData?.zoom ?? 1.0,
                 isFeatured: loc.is_featured ?? false,
                 featuredOrder: loc.featured_order ?? 0,
-            };
-        }));
+            });
+        }
 
         // Get continent cover image
         // 1. Check for specific continent cover in savedCovers (and try to match against actual images for latest URLs)
@@ -427,7 +428,7 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             // Check if saved cover exists in any of the locations of this continent to get the most updated URL
             let matchedUrl = '';
             for (const loc of locationsWithCounts) {
-                const folderPath = getLocationFolderPath(continent.name, loc.name);
+                const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
                 const images = await getImageKitImages(folderPath);
                 const match = images.find(img =>
                     normalizeUrl(img.src) === normalizeUrl(savedContinentCover.cover_url) ||
@@ -503,7 +504,7 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
     const location = continent.locations.find((l: any) => l.slug === locationSlug);
     if (!location) return [];
 
-    const folderPath = getLocationFolderPath(continent.name, location.name);
+    const folderPath = getLocationFolderPath(continent.name, location.name, location.country);
     const images = await getImageKitImages(folderPath);
 
     // Cache the result
@@ -522,7 +523,7 @@ export async function getFullGalleryStructure() {
         name: continent.name,
         slug: continent.slug,
         locations: await Promise.all(continent.locations.map(async (loc: any) => {
-            const folderPath = getLocationFolderPath(continent.name, loc.name);
+            const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
             const images = await getImageKitImages(folderPath);
             const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
             const savedCoverData = savedCovers[coverKey];

@@ -110,6 +110,7 @@ export default function GalleryLocationClient({ images, title }: Props) {
                                 width={800}
                                 height={600}
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                priority={i < 4}
                                 className="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-500"
                             />
 

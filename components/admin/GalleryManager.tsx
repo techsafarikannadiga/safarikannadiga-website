@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { UploadQueueModal } from './UploadQueueModal';
+import MediaManagerModal from './NewMediaManagerModal'; // V3 Import
 
+// Types for Gallery
 export type GalleryImage = {
     name: string;
     path: string;
@@ -11,6 +14,7 @@ export type GalleryImage = {
     isContinentCover?: boolean;
     isUploading?: boolean;
 };
+
 
 export type GalleryLocation = {
     id: string; // Added ID for DB operations
@@ -42,17 +46,34 @@ interface GalleryManagerProps {
 export function GalleryManager({ structure: initialStructure, fetchStructure, setActionLoading }: GalleryManagerProps) {
     const [structure, setLocalStructure] = useState<GalleryContinent[]>(initialStructure);
     const [activeContinentName, setActiveContinentName] = useState<string>(initialStructure[0]?.name || '');
-    const [activeLocationName, setActiveLocationName] = useState<string>(initialStructure[0]?.locations[0]?.name || '');
+
+    // Derived state for countries in the active continent
+    const getCountriesForContinent = (continentName: string, currentStructure: GalleryContinent[]) => {
+        const continent = currentStructure.find(c => c.name === continentName);
+        if (!continent) return [];
+        return Array.from(new Set(continent.locations.map(l => l.country).filter(Boolean))).sort();
+    };
+
+    const [activeCountry, setActiveCountry] = useState<string>(() => {
+        const countries = getCountriesForContinent(initialStructure[0]?.name, initialStructure);
+        return countries[0] || '';
+    });
+
+    const [activeLocationName, setActiveLocationName] = useState<string>(() => {
+        const continent = initialStructure.find(c => c.name === initialStructure[0]?.name);
+        const location = continent?.locations.find(l => l.country === (getCountriesForContinent(initialStructure[0]?.name, initialStructure)[0]));
+        return location?.name || '';
+    });
+
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<string>('');
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [focalPointImage, setFocalPointImage] = useState<GalleryImage | null>(null);
-    const [focalPoint, setFocalPoint] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
-    const [coverZoom, setCoverZoom] = useState(1.0);
-    const [isDraggingFocal, setIsDraggingFocal] = useState(false);
+    const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+    const [showQueueModal, setShowQueueModal] = useState(false);
+    const [mediaManagerImage, setMediaManagerImage] = useState<GalleryImage | null>(null);
 
     // Form states
     const [newLocation, setNewLocation] = useState({ name: '', country: '', description: '' });
@@ -65,17 +86,67 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
         }
     }, [initialStructure, uploading]);
 
+    // Update derived states when activeContinentName changes
+    useEffect(() => {
+        const countries = getCountriesForContinent(activeContinentName, structure);
+        if (!countries.includes(activeCountry)) {
+            const newCountry = countries[0] || '';
+            setActiveCountry(newCountry);
+
+            // Update location based on new country
+            const continent = structure.find(c => c.name === activeContinentName);
+            const firstLoc = continent?.locations.find(l => l.country === newCountry);
+            setActiveLocationName(firstLoc?.name || '');
+        }
+    }, [activeContinentName, structure]);
+
+    // Update location when activeCountry changes
+    useEffect(() => {
+        const continent = structure.find(c => c.name === activeContinentName);
+        const firstLoc = continent?.locations.find(l => l.country === activeCountry);
+        if (firstLoc && firstLoc.name !== activeLocationName) {
+            setActiveLocationName(firstLoc.name);
+        }
+        // If no locations for this country (e.g. newly added empty country - though we plan to add with location), handle gracefully
+    }, [activeCountry]);
+
+
     const normalizeUrl = (u: string) => u ? u.split('?')[0].split('#')[0] : '';
 
     const activeContinent = structure.find(c => c.name === activeContinentName);
+    // Filter locations by activeCountry
     const activeLocation = activeContinent?.locations.find(l => l.name === activeLocationName);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files?.length || !activeContinentName || !activeLocationName) return;
+    // Get visible locations (filtered by country)
+    const visibleLocations = activeContinent?.locations.filter(l => l.country === activeCountry) || [];
+
+    const handleFileUploadRequest = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        const newFiles = Array.from(files);
+
+        // Filter out zero byte files
+        const validFiles = newFiles.filter(f => f.size > 0);
+        if (validFiles.length < newFiles.length) {
+            alert(`Skipped ${newFiles.length - validFiles.length} empty or corrupted files.`);
+        }
+
+        if (validFiles.length > 0) {
+            setUploadQueue(validFiles);
+            setShowQueueModal(true);
+        }
+        e.target.value = ''; // Reset input to allow re-selecting same files
+    };
+
+    const handleUploadConfirmed = async (filesToUpload: File[]) => {
+        setShowQueueModal(false); // Close queue modal immediately
+        setUploadQueue([]); // Clear queue state
+
+        if (!activeContinentName || !activeLocationName) return;
 
         setUploading(true);
-        const files = Array.from(e.target.files);
-        e.target.value = '';
+        const files = filesToUpload;
 
         // Optimistic UI: Create temporary ghost images
         const pendingUploads = files.map(file => ({
@@ -100,10 +171,14 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
             try {
                 // Auto-compress large files to stay under ImageKit's 25MB limit
                 let uploadableFile = file;
-                if (file.size > 4 * 1024 * 1024) { // >4MB
-                    setUploadProgress(`Compressing ${index + 1}/${files.length}: ${file.name}...`);
+                if (file.size > 10 * 1024 * 1024) { // >10MB check as per plan
+                    setUploadProgress(`Compressing large file ${index + 1}/${files.length}: ${file.name}...`);
+                    uploadableFile = await compressInBrowser(file);
+                } else if (file.size > 4 * 1024 * 1024) { // >4MB optimization
+                    setUploadProgress(`Optimizing ${index + 1}/${files.length}: ${file.name}...`);
                     uploadableFile = await compressInBrowser(file);
                 }
+
                 setUploadProgress(`Uploading ${index + 1}/${files.length}: ${file.name} (${(uploadableFile.size / 1024 / 1024).toFixed(1)}MB)`);
                 // 1. Get Authentication Parameters from our backend
                 const authRes = await fetch('/api/admin/gallery/auth');
@@ -120,8 +195,15 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                 ikFormData.append('expire', authData.expire);
                 ikFormData.append('token', authData.token);
 
-                // Construct the folder path (safari-gallery/Continent/Location)
-                const folderPath = `safari-gallery/${activeContinentName.replace(/\s+/g, '-')}/${activeLocationName.replace(/\s+/g, '-')}`;
+                // Construct the folder path (safari-gallery/Continent/Country/Location)
+                // We need to sanitize similarly to backend
+                const sanitize = (s: string) => s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '');
+
+                let folderPath = `safari-gallery/${sanitize(activeContinentName)}`;
+                if (activeLocation && activeLocation.country) {
+                    folderPath += `/${sanitize(activeLocation.country)}`;
+                }
+                folderPath += `/${sanitize(activeLocationName)}`;
                 ikFormData.append('folder', folderPath);
                 ikFormData.append('useUniqueFileName', 'false');
 
@@ -258,8 +340,87 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
         }
 
         await fetchStructure();
+
         setUploading(false);
         setUploadProgress('');
+    };
+
+    const handleSaveMediaEdit = async (file: File) => {
+        if (!activeContinentName || !activeLocationName || !mediaManagerImage) return;
+
+        // 1. Upload the new file
+        // We'll use a modified version of handleUploadConfirmed for a single file
+        // but we need to track it to potentially update covers
+        setUploading(true);
+        try {
+            // ... (Reuse core upload logic, simplified for single file replacement)
+            // Ideally we refactor upload logic to be reusable, but for safety we'll use the queue mechanism
+            // or just call uploadFile directly if we expose it.
+            // Let's reuse handleUploadConfirmed by tricking it into "editing mode" via a side effect?
+            // Better: Just call handleUploadConfirmed([file]) and handle the cover update POST-upload.
+            // BUT: We need to know which image was replaced to update covers.
+
+            // Strategy: We will upload, and THEN checking the result, update the covers if needed.
+            // Since handleUploadConfirmed is complex/optimized for queues, let's just trigger it
+            // and relying on the user to re-set the cover is annoying. 
+            // Let's use the Smart logic:
+
+            setMediaManagerImage(null); // Close modal first
+            await handleUploadConfirmed([file]);
+
+            // Note: Optimistic UI will show the new image. 
+            // Automatic cover replacement is tricky because we don't know the NEW URL yet.
+            // We'll trust the user to set it for now, or add a TODO for V2 Smart Replace.
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSaveMediaCover = async (focal: { x: number; y: number }, zoom: number) => {
+        if (!activeLocation || !mediaManagerImage) return;
+
+        // Optimistic UI Update
+        const targetLocationName = activeLocation.name;
+
+        // We are updating the location settings, NOT the image itself.
+        // Wait, the previous logic stored focalX/Y on the LOCATION, not the image.
+        // So this applies to the CURRENT active location's cover settings.
+
+        setLocalStructure(prev => prev.map(c => {
+            if (c.name !== activeContinentName) return c;
+            return {
+                ...c,
+                locations: c.locations.map(l => {
+                    if (l.name !== targetLocationName) return l;
+                    return { ...l, focalX: focal.x, focalY: focal.y, zoom: zoom };
+                })
+            };
+        }));
+
+        try {
+            // Need a new API endpoint or modify existing one to accept focal points
+            // Assuming we use the existing 'advanced-cover' endpoint or similar
+            // Since we don't have one explicitly shown in the summary, we might need to mock or reuse 'locations' patch
+            // Re-using the logic from the deleted handleAdvancedCover -> it seemed to just set local state.
+            // Actually, we must save this to the DB.
+
+            await fetch('/api/admin/locations', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    continentSlug: activeContinent?.slug,
+                    locationSlug: activeLocation.slug,
+                    // We need to support these fields in the API
+                    coverImage: mediaManagerImage.url, // Required for setting cover in DB
+                    focalX: focal.x,
+                    focalY: focal.y,
+                    zoom: zoom
+                }),
+            });
+        } catch (error) {
+            console.error('Failed to save cover settings', error);
+            fetchStructure();
+        }
     };
 
     const handleDelete = async (imagePath: string) => {
@@ -365,14 +526,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
         }
     };
 
-    const handleAdvancedCover = (img: GalleryImage) => {
-        setFocalPointImage(img);
-        setFocalPoint({
-            x: activeLocation?.focalX ?? 50,
-            y: activeLocation?.focalY ?? 50
-        });
-        setCoverZoom(activeLocation?.zoom ?? 1.0);
-    };
+
 
     const handleAddLocation = async () => {
         if (!newLocation.name || !newLocation.country) return alert('Name and country are required');
@@ -482,7 +636,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                         key={c.name}
                         onClick={() => {
                             setActiveContinentName(c.name);
-                            setActiveLocationName(c.locations[0]?.name || '');
+                            // Country and Location updates handled by useEffect
                         }}
                         className={`px-6 md:px-8 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${activeContinentName === c.name
                             ? 'bg-white text-safari-gold shadow-md'
@@ -494,9 +648,40 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                 ))}
             </div>
 
+            {/* Country Tabs (New Layer) */}
+            {activeContinent && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                    {getCountriesForContinent(activeContinentName, structure).map(country => (
+                        <button
+                            key={country}
+                            onClick={() => setActiveCountry(country)}
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${activeCountry === country
+                                ? 'bg-neutral-charcoal text-white border-neutral-charcoal shadow-lg'
+                                : 'bg-white text-neutral-gray border-gray-100 hover:border-neutral-gray/50'
+                                }`}
+                        >
+                            {country}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => {
+                            setNewLocation({ name: '', country: '', description: '' }); // Reset
+                            // We might need a separate "New Country" mode or just use the same modal with different title?
+                            // For now let's reuse add modal but maybe pre-set nothing?
+                            // Or better: Use a "isAddingCountry" flag or just let user type new country in modal.
+                            // Let's open the modal, clear country, and maybe focus it.
+                            setShowAddModal(true);
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-gray-300 text-neutral-gray hover:text-safari-gold hover:border-safari-gold transition-all whitespace-nowrap flex items-center gap-1"
+                    >
+                        <span>+</span> New Country
+                    </button>
+                </div>
+            )}
+
             {/* Locations Navigation */}
             <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                {activeContinent?.locations.map(loc => (
+                {visibleLocations.map(loc => (
                     <div key={loc.name} className="relative group shrink-0">
                         <button
                             onClick={() => setActiveLocationName(loc.name)}
@@ -520,7 +705,10 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                     </div>
                 ))}
                 <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => {
+                        setNewLocation({ name: '', country: activeCountry, description: '' }); // Pre-fill country
+                        setShowAddModal(true);
+                    }}
                     className="px-5 py-2.5 rounded-xl text-sm font-bold border-2 border-dashed border-safari-gold/30 text-safari-gold hover:bg-safari-gold hover:text-white transition-all flex items-center gap-2"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -577,9 +765,20 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
                                 Upload Images
-                                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                                <input type="file" multiple accept="image/*" onChange={handleFileUploadRequest} className="hidden" />
                             </label>
                         </div>
+
+                        <UploadQueueModal
+                            files={uploadQueue}
+                            isOpen={showQueueModal}
+                            onClose={() => {
+                                setShowQueueModal(false);
+                                setUploadQueue([]);
+                            }}
+                            onUpload={handleUploadConfirmed}
+                            onFilesChange={setUploadQueue}
+                        />
 
                         {/* Image Grid */}
                         {activeLocation.images.length === 0 ? (
@@ -607,7 +806,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-4 gap-2">
                                             {!img.isCover && !img.isUploading && (
                                                 <button
-                                                    onClick={() => handleSetCover(img.url, false)}
+                                                    onClick={() => handleSetCover(img.path, false)}
                                                     className="w-full bg-white text-neutral-charcoal text-[10px] font-bold py-1.5 rounded-lg hover:bg-safari-gold hover:text-white transition-colors"
                                                 >
                                                     Set Location Cover
@@ -615,7 +814,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                                             )}
                                             {!img.isContinentCover && !img.isUploading && (
                                                 <button
-                                                    onClick={() => handleSetCover(img.url, true)}
+                                                    onClick={() => handleSetCover(img.path, true)}
                                                     className="w-full bg-safari-gold text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-white hover:text-safari-gold transition-colors"
                                                 >
                                                     Set Continent Cover
@@ -631,10 +830,14 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                                             )}
                                             {!img.isUploading && (
                                                 <button
-                                                    onClick={() => handleAdvancedCover(img)}
-                                                    className="w-full bg-blue-500/80 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-blue-600 transition-colors"
+                                                    onClick={() => setMediaManagerImage(img)}
+                                                    className="w-full bg-white/90 backdrop-blur-sm text-neutral-charcoal text-[11px] font-bold py-2 rounded-xl hover:bg-safari-gold hover:text-white transition-all shadow-lg flex items-center justify-center gap-2"
                                                 >
-                                                    📍 Cover Editor
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    Manage Media
                                                 </button>
                                             )}
                                         </div>
@@ -678,7 +881,9 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                 <div className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4 backdrop-blur-md">
                     <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-scale-in border border-gray-100">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-bold font-heading text-neutral-charcoal">New Destination</h3>
+                            <h3 className="text-2xl font-bold font-heading text-neutral-charcoal">
+                                {newLocation.country ? `New Safari in ${newLocation.country}` : 'New Country & Safari'}
+                            </h3>
                             <button onClick={() => setShowAddModal(false)} className="text-neutral-gray hover:text-neutral-charcoal">×</button>
                         </div>
                         <div className="space-y-5">
@@ -694,11 +899,22 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Country</label>
                                 <input
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-safari-gold outline-none"
+                                    className={`w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-safari-gold outline-none ${newLocation.country && activeCountry === newLocation.country ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     placeholder="e.g. Tanzania"
                                     value={newLocation.country}
                                     onChange={e => setNewLocation({ ...newLocation, country: e.target.value })}
+                                    list="country-suggestions"
+                                // Lock country if we are adding a safari to an ACTIVE country (and it was pre-filled correctly)
+                                // Use a simpler check: if we clicked "New Safari", we pre-filled it. 
+                                // If we clicked "New Country", we cleared it.
+                                // But actually, letting them edit it even in "New Safari" might be okay, but logically they should be in "New Country" mode if they want a new one.
+                                // Let's just allow editing but suggest current ones.
                                 />
+                                <datalist id="country-suggestions">
+                                    {Array.from(new Set(structure.flatMap(c => c.locations.map(l => l.country)))).sort().map(country => (
+                                        <option key={country} value={country} />
+                                    ))}
+                                </datalist>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Description</label>
@@ -760,149 +976,20 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
                 </div>
             )}
 
-            {/* Advanced Cover Editor Modal (Safari-Style) */}
-            {focalPointImage && (
-                <div className="fixed inset-0 bg-black/95 z-[500] flex items-center justify-center p-4 md:p-8 backdrop-blur-xl">
-                    <div className="bg-[#121212] text-white rounded-[3rem] w-full max-w-4xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 flex flex-col md:flex-row overflow-hidden max-h-[95vh]">
-                        {/* Left Side: Preview Area */}
-                        <div className="flex-1 bg-black/20 p-6 md:p-12 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative">
-                            {/* Decorative Safari Pattern background */}
-                            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
 
-                            <div className="relative group">
-                                <div className="absolute -inset-8 bg-safari-gold/20 blur-3xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                                <div
-                                    className="relative w-[280px] sm:w-[320px] aspect-[4/5] bg-neutral-900 rounded-3xl overflow-hidden border-2 border-safari-gold/50 shadow-2xl cursor-move touch-none ring-1 ring-white/10"
-                                    onMouseDown={() => setIsDraggingFocal(true)}
-                                    onMouseUp={() => setIsDraggingFocal(false)}
-                                    onMouseLeave={() => setIsDraggingFocal(false)}
-                                    onMouseMove={(e) => {
-                                        if (!isDraggingFocal) return;
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
-                                        const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
-                                        setFocalPoint({ x, y });
-                                    }}
-                                    onTouchStart={() => setIsDraggingFocal(true)}
-                                    onTouchEnd={() => setIsDraggingFocal(false)}
-                                    onTouchMove={(e) => {
-                                        if (!isDraggingFocal) return;
-                                        const touch = e.touches[0];
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = Math.min(100, Math.max(0, ((touch.clientX - rect.left) / rect.width) * 100));
-                                        const y = Math.min(100, Math.max(0, ((touch.clientY - rect.top) / rect.height) * 100));
-                                        setFocalPoint({ x, y });
-                                    }}
-                                >
-                                    <Image
-                                        src={focalPointImage.url}
-                                        alt=""
-                                        fill
-                                        className="pointer-events-none select-none"
-                                        style={{
-                                            objectPosition: `${focalPoint.x}% ${focalPoint.y}%`,
-                                            transform: `scale(${coverZoom})`,
-                                            transition: isDraggingFocal ? 'none' : 'object-position 0.2s ease-out'
-                                        }}
-                                        sizes="400px"
-                                        priority
-                                    />
-
-                                    {/* Precise Framing Grid */}
-                                    <div className="absolute inset-0 pointer-events-none border border-white/10"></div>
-                                    <div className="absolute inset-x-0 top-1/3 h-[1px] bg-white/10"></div>
-                                    <div className="absolute inset-x-0 top-2/3 h-[1px] bg-white/10"></div>
-                                    <div className="absolute inset-y-0 left-1/3 w-[1px] bg-white/10"></div>
-                                    <div className="absolute inset-y-0 left-2/3 w-[1px] bg-white/10"></div>
-
-                                    {/* Center Point */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 border border-safari-gold/50 rounded-full"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Side: Controls */}
-                        <div className="w-full md:w-[320px] p-8 flex flex-col justify-between bg-white/[0.02] backdrop-blur-sm">
-                            <div className="space-y-8">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="text-2xl font-bold font-heading text-white tracking-tight">Cover Framing</h3>
-                                        <p className="text-xs text-white/40 mt-1 uppercase tracking-widest font-bold">Location: {activeLocationName}</p>
-                                    </div>
-                                    <button onClick={() => setFocalPointImage(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors group">
-                                        <svg className="w-6 h-6 text-white/40 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                <div className="space-y-6">
-                                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Magnification</span>
-                                            <span className="text-xs font-mono text-safari-gold font-bold">{coverZoom.toFixed(1)}x</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="3"
-                                            step="0.1"
-                                            value={coverZoom}
-                                            onChange={(e) => setCoverZoom(parseFloat(e.target.value))}
-                                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-safari-gold"
-                                        />
-                                    </div>
-
-                                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Focal Pivot</span>
-                                            <span className="text-[10px] font-mono text-white/30">{Math.round(focalPoint.x)}%, {Math.round(focalPoint.y)}%</span>
-                                        </div>
-                                        <p className="text-[11px] text-white/60 leading-relaxed italic">
-                                            Drag the image to position the perfect wildlife moment within the card frame. This framing will be used across the homepage and gallery.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-8 space-y-3">
-                                <button
-                                    onClick={async () => {
-                                        setActionLoading('Saving cover...');
-                                        try {
-                                            await fetch('/api/admin/gallery', {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    continent: activeContinentName,
-                                                    location: activeLocationName,
-                                                    imagePath: focalPointImage.url,
-                                                    focalPoint: { ...focalPoint, zoom: coverZoom }
-                                                }),
-                                            });
-                                            await fetchStructure();
-                                            setFocalPointImage(null);
-                                        } catch (err) {
-                                            console.error('Advanced cover save failed', err);
-                                        } finally {
-                                            setActionLoading(null);
-                                        }
-                                    }}
-                                    className="w-full py-4 bg-safari-gold text-white font-bold rounded-2xl shadow-xl hover:bg-safari-gold-dark transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Apply Framing
-                                </button>
-                                <button onClick={() => setFocalPointImage(null)} className="w-full py-3 font-bold text-white/30 hover:text-white transition-all text-sm">
-                                    Discard Changes
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Unified Media Manager */}
+            {mediaManagerImage && activeLocation && (
+                <MediaManagerModal
+                    image={mediaManagerImage}
+                    isOpen={!!mediaManagerImage}
+                    onClose={() => setMediaManagerImage(null)}
+                    onSaveEdit={handleSaveMediaEdit}
+                    onSaveCover={handleSaveMediaCover}
+                    initialFocalPoint={activeLocation.focalX ? { x: activeLocation.focalX, y: activeLocation.focalY! } : undefined}
+                    initialZoom={activeLocation.zoom}
+                />
             )}
         </div>
     );
 }
+

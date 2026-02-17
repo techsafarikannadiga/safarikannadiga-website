@@ -20,13 +20,17 @@ export function ProtectedImage({ className, containerClassName, alt, ...props }:
 
             <Image
                 className={cn(
-                    "pointer-events-none select-none transition-opacity duration-300",
-                    isLoaded ? "opacity-100" : "opacity-0",
+                    "pointer-events-none select-none transition-opacity duration-300 opacity-100", // Force visible
+                    // isLoaded ? "opacity-100" : "opacity-0",
                     className
                 )}
                 alt={alt}
                 draggable={false}
                 onLoad={() => setIsLoaded(true)}
+                onError={() => {
+                    console.error('Image failed to load:', props.src);
+                    setIsLoaded(true); // Force show (broken image icon) so it's not invisible
+                }}
                 {...props}
             />
         </div>

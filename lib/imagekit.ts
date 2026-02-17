@@ -28,7 +28,13 @@
 import ImageKit from '@imagekit/nodejs';
 
 // Initialize ImageKit client
-const imagekit = new ImageKit({
+console.log('ImageKit Init:', {
+    hasKey: !!process.env.IMAGEKIT_PRIVATE_KEY,
+    keyLength: process.env.IMAGEKIT_PRIVATE_KEY?.length,
+    endpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+});
+
+export const imagekit = new ImageKit({
     // @ts-ignore
     publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || '',
     privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
@@ -99,17 +105,32 @@ export function buildImageUrl(
  * Sanitize folder name for ImageKit (no spaces allowed)
  */
 function sanitizeFolderName(name: string): string {
-    return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '');
+    return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').replace(/-+/g, '-');
 }
 
 /**
  * Get folder path for a location
  */
-export function getLocationFolderPath(continentName: string, locationName: string): string {
+/**
+ * Get folder path for a location
+ */
+export function getLocationFolderPath(continentName: string, locationName: string, countryName?: string): string {
     const safeContinentName = sanitizeFolderName(continentName);
     const safeLocationName = sanitizeFolderName(locationName);
+
+    if (countryName) {
+        const safeCountryName = sanitizeFolderName(countryName.trim());
+        return `${IMAGEKIT_ROOT}/${safeContinentName}/${safeCountryName}/${safeLocationName}`;
+    }
+
     return `${IMAGEKIT_ROOT}/${safeContinentName}/${safeLocationName}`;
 }
+
+/**
+ * Move a file to a new folder
+ */
+// Old moveFile implementation removed/replaced
+
 
 export interface ImageKitFile {
     fileId: string;
@@ -134,10 +155,15 @@ export async function listFiles(folderPath: string): Promise<ImageKitFile[]> {
     try {
         // Ensure path starts with /
         const path = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
-
-        const response = await imagekit.assets.list({
+        // Try listing without filtering first to debug
+        const response: any = await imagekit.assets.list({
             path: path,
         });
+
+        console.log(`[listFiles] Path: ${path}, Count: ${response?.length}`);
+        if (response?.length === 0) {
+            console.log(`[listFiles] WARNING: No files found for ${path}`);
+        }
 
         // Filter to only include files (not folders)
         return response
@@ -165,8 +191,38 @@ export async function listFiles(folderPath: string): Promise<ImageKitFile[]> {
 /**
  * Upload a file to ImageKit
  */
+// Helper to get file details
+async function getFileDetails(fileId: string): Promise<any> {
+    try {
+        const auth = getAuthParams(); // This returns client-side auth, we need server-side?
+        // Actually we can use the SDK if possible or fetch.
+        // Let's use fetch as fallback since SDK methods seem missing/unreliable.
+        if (process.env.IMAGEKIT_PRIVATE_KEY) {
+            const authHeader = 'Basic ' + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY + ':').toString('base64');
+            const res = await fetch(`${URL_ENDPOINT.replace('ik.imagekit.io', 'api.imagekit.io/v1/files')}/${fileId}/details`, {
+                headers: { 'Authorization': authHeader }
+            });
+            // Wait, URL_ENDPOINT is `ik.imagekit.io/safarikannadiga`. API is `api.imagekit.io`.
+            // Need correct endpoint.
+            const apiEndpoint = `https://api.imagekit.io/v1/files/${fileId}/details`;
+            const res2 = await fetch(apiEndpoint, {
+                headers: { 'Authorization': authHeader }
+            });
+            if (res2.ok) return await res2.json();
+        }
+        return null;
+    } catch (e) {
+        console.error('Get details failed:', e);
+        return null;
+    }
+}
+
+/**
+ * Upload a file to ImageKit
+ * Accepts Buffer, ArrayBuffer, or URL string (for copy/move)
+ */
 export async function uploadFile(
-    file: Buffer | ArrayBuffer,
+    file: Buffer | ArrayBuffer | string,
     fileName: string,
     folder: string
 ): Promise<{ success: boolean; fileId?: string; url?: string; filePath?: string; error?: string }> {
@@ -175,14 +231,19 @@ export async function uploadFile(
     }
 
     try {
-        // Convert to proper format
-        const buffer = Buffer.isBuffer(file) ? file : Buffer.from(file);
+        let fileData: any = file;
+
+        // Convert Buffer/ArrayBuffer to base64
+        if (typeof file !== 'string') {
+            const buffer = Buffer.isBuffer(file) ? file : Buffer.from(file);
+            fileData = buffer.toString('base64');
+        }
 
         // Ensure folder path starts with /
         const folderPath = folder.startsWith('/') ? folder : `/${folder}`;
 
         const response = await imagekit.files.upload({
-            file: buffer.toString('base64'),
+            file: fileData,
             fileName: fileName,
             folder: folderPath,
             useUniqueFileName: false,
@@ -200,6 +261,41 @@ export async function uploadFile(
             success: false,
             error: error?.message || 'Failed to upload image'
         };
+    }
+}
+
+/**
+ * Move a file (Copy + Delete strategy)
+ */
+export async function moveFile(fileId: string, destinationFolder: string): Promise<{ success: boolean; error?: string }> {
+    if (!isImageKitConfigured()) {
+        return { success: false, error: 'ImageKit not configured' };
+    }
+
+    try {
+        // 1. Get file details to find source URL
+        const details = await getFileDetails(fileId);
+        if (!details || !details.url) {
+            return { success: false, error: 'Source file not found or has no URL' };
+        }
+
+        // 2. Upload to new destination using Source URL
+        const uploadResult = await uploadFile(details.url, details.name, destinationFolder);
+
+        if (!uploadResult.success) {
+            return { success: false, error: `Copy failed: ${uploadResult.error}` };
+        }
+
+        // 3. Delete original file
+        const deleteResult = await deleteFile(fileId);
+        if (!deleteResult.success) {
+            console.warn(`File moved/copied but original cleanup failed for ${fileId}`);
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error moving file:', error);
+        return { success: false, error: error?.message || 'Failed to move file' };
     }
 }
 
@@ -292,30 +388,6 @@ export async function deleteFolder(folderPath: string): Promise<{ success: boole
     }
 }
 
-/**
- * Get file details by ID
- */
-export async function getFileDetails(fileId: string): Promise<ImageKitFile | null> {
-    if (!isImageKitConfigured()) {
-        return null;
-    }
 
-    try {
-        const file = await imagekit.files.get(fileId);
-        return {
-            fileId: file.fileId || fileId,
-            name: file.name || '',
-            filePath: file.filePath || '',
-            url: file.url || '',
-            thumbnailUrl: file.thumbnail || file.url || '',
-            width: file.width,
-            height: file.height,
-            size: file.size || 0,
-        };
-    } catch (error) {
-        console.error('Error getting file details:', error);
-        return null;
-    }
-}
 
 export default imagekit;

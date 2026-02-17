@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { 
-    addLocation, 
+import {
+    addLocation,
     deleteLocation,
     updateLocation,
     getContinentsList
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
             description,
             wildlife: wildlife || []
         });
-        
+
         if (result.success) {
             return NextResponse.json({ success: true, location: result.location });
         } else {
@@ -48,13 +48,13 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
     try {
         const { continentSlug, locationSlug } = await req.json();
-        
+
         if (!continentSlug || !locationSlug) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
         const result = await deleteLocation(continentSlug, locationSlug);
-        
+
         if (result.success) {
             return NextResponse.json({ success: true });
         } else {
@@ -69,23 +69,27 @@ export async function DELETE(req: Request) {
 // PATCH: Update location details (description, wildlife, country)
 export async function PATCH(req: Request) {
     try {
-        const { continentSlug, locationSlug, description, wildlife, country } = await req.json();
-        
+        const { continentSlug, locationSlug, description, wildlife, country, coverImage, focalX, focalY, zoom } = await req.json();
+
         if (!continentSlug || !locationSlug) {
             return NextResponse.json({ error: 'Missing required fields (continentSlug, locationSlug)' }, { status: 400 });
         }
 
-        const updates: { description?: string; wildlife?: string[]; country?: string } = {};
+        const updates: any = {};
         if (description !== undefined) updates.description = description;
         if (wildlife !== undefined) updates.wildlife = wildlife;
         if (country !== undefined) updates.country = country;
+        if (coverImage !== undefined) updates.coverImage = coverImage;
+        if (focalX !== undefined) updates.focalX = focalX;
+        if (focalY !== undefined) updates.focalY = focalY;
+        if (zoom !== undefined) updates.zoom = zoom;
 
         if (Object.keys(updates).length === 0) {
             return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
         }
 
         const result = await updateLocation(continentSlug, locationSlug, updates);
-        
+
         if (result.success) {
             return NextResponse.json({ success: true });
         } else {
