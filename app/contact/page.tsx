@@ -105,6 +105,14 @@ function ContactFormContent() {
             {/* Form Side */}
             <div className="bg-white p-10 rounded-card shadow-2xl border border-neutral-gray/5">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Honeypot field for anti-spam */}
+                    <input
+                        type="text"
+                        {...register("website")}
+                        style={{ display: 'none' }}
+                        tabIndex={-1}
+                        autoComplete="off"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">First Name</label>

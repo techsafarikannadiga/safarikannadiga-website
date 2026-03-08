@@ -23,9 +23,9 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
 
     return (
         <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-8 mb-12 space-y-8">
                 {testimonials.map((testimonial) => (
-                    <div key={testimonial.id} className="bg-white p-8 rounded-card shadow-card h-full flex flex-col">
+                    <div key={testimonial.id} className="break-inside-avoid bg-white p-8 rounded-card shadow-card flex flex-col">
                         <div className="flex text-safari-gold mb-4">
                             {[...Array(5)].map((_, i) => (
                                 <svg key={i} className={`w-5 h-5 ${i < testimonial.rating ? 'fill-current' : 'fill-transparent stroke-current'}`} viewBox="0 0 20 20">
@@ -80,7 +80,10 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
                                         </svg>
                                     )}
                                 </h4>
-                                <p className="text-neutral-gray text-xs">{testimonial.safari}</p>
+                                <p className="text-neutral-gray text-xs">
+                                    {testimonial.safari}
+                                    {testimonial.visit_date && ` • ${new Date(testimonial.visit_date + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                                </p>
                             </div>
                         </div>
                     </div>

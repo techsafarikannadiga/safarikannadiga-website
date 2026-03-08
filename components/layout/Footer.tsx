@@ -152,6 +152,14 @@ export function Footer({ settings }: FooterProps) {
                                 window.location.href = `mailto:Safarikannadiga@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                             }
                         }}>
+                            {/* Honeypot field for anti-spam */}
+                            <input
+                                type="text"
+                                name="website"
+                                style={{ display: 'none' }}
+                                tabIndex={-1}
+                                autoComplete="off"
+                            />
                             <input
                                 type="email"
                                 name="email"

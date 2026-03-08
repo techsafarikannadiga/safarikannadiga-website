@@ -75,7 +75,10 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
                             {testimonial.name}
                             <SourceBadge source={testimonial.source} />
                         </h4>
-                        <p className="text-neutral-gray text-xs truncate">{testimonial.safari}</p>
+                        <p className="text-neutral-gray text-xs truncate">
+                            {testimonial.safari}
+                            {testimonial.visit_date && ` • ${new Date(testimonial.visit_date + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -149,12 +152,18 @@ export function TestimonialMarquee({ testimonials }: TestimonialMarqueeProps) {
                 </div>
 
                 {/* CTA */}
-                <div className="text-center mt-12 px-4">
+                <div className="text-center mt-12 px-4 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <Link
+                        href="/testimonials"
+                        className="inline-flex items-center justify-center gap-2 bg-white text-safari-gold px-8 py-3.5 rounded-full font-bold text-sm border-2 border-safari-gold hover:bg-safari-gold hover:text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto"
+                    >
+                        Read All Reviews
+                    </Link>
                     <Link
                         href="/share-experience"
-                        className="inline-flex items-center gap-2 bg-forest-green text-white px-8 py-3.5 rounded-full font-bold text-sm hover:bg-forest-green-dark transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+                        className="inline-flex items-center justify-center gap-2 bg-forest-green text-white px-8 py-3.5 rounded-full font-bold text-sm hover:bg-forest-green-dark transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Share Your Story

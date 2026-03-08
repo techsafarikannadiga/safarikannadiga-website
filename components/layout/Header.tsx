@@ -17,6 +17,7 @@ const navigation = [
     { name: 'About', href: '/about' },
     { name: 'Gallery', href: '/gallery' },
     { name: 'Upcoming Tours', href: '/upcoming-tours' },
+    { name: 'Reviews', href: '/testimonials' },
     { name: 'Contact', href: '/contact' },
 ];
 

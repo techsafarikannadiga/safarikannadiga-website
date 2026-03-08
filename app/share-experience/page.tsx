@@ -16,6 +16,7 @@ interface ExperienceFormData {
     highlights: string;
     story: string;
     consent: boolean;
+    website?: string; // Honeypot field
 }
 
 export default function ShareExperiencePage() {
@@ -184,6 +185,14 @@ export default function ShareExperiencePage() {
 
                     <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-8 md:p-12 rounded-card shadow-xl">
                         <div className="space-y-8">
+                            {/* Honeypot field for anti-spam */}
+                            <input
+                                type="text"
+                                {...register("website")}
+                                style={{ display: 'none' }}
+                                tabIndex={-1}
+                                autoComplete="off"
+                            />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">

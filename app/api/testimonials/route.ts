@@ -21,6 +21,16 @@ export async function POST(req: Request) {
     try {
         const formData = await req.formData();
 
+        // Anti-spam Honeypot Check
+        if (formData.get('website')) {
+            // Silently succeed for bots
+            return NextResponse.json({
+                success: true,
+                id: 'honeypot-bot-submission',
+                message: 'Thank you for sharing your experience! Your testimonial will be reviewed and published soon.'
+            });
+        }
+
         // Extract testimonial data
         const data: TestimonialInput = {
             name: formData.get('name') as string,

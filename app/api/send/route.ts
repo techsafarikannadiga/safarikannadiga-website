@@ -10,6 +10,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+
+        // Anti-spam Honeypot Check
+        if (body.website) {
+            // Silently succeed for bots
+            return NextResponse.json({ success: true, message: 'Message sent successfully' });
+        }
+
         const { email, firstName, lastName, interest, message, type } = body;
 
         let subject = '';
