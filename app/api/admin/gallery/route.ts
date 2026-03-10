@@ -6,6 +6,7 @@ import {
     deleteImage,
     setCoverPhoto
 } from '@/lib/gallery-cloud';
+import { getLocationFolderPath } from '@/lib/imagekit';
 
 export const maxDuration = 60;
 
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400 });
         }
 
-        const result = await saveImage(continent, location, file, country);
+        const folderPath = getLocationFolderPath(continent, location, country);
+        const result = await saveImage(folderPath, file);
 
         if (result.success) {
             revalidatePath('/', 'layout');

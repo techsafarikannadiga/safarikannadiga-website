@@ -116,8 +116,56 @@ export function ToursAdmin() {
             formDataObj.append('status', formData.status);
             formDataObj.append('featured', formData.featured.toString());
 
-            if (imageFile) {
-                formDataObj.append('image', imageFile);
+            let finalImageFile = imageFile;
+
+            // Prevent Vercel/Netlify payload limits by compressing large files client-side
+            if (imageFile && imageFile.size > 4 * 1024 * 1024) {
+                try {
+                    const objectUrl = URL.createObjectURL(imageFile);
+                    const img = new window.Image();
+                    img.src = objectUrl;
+
+                    finalImageFile = await new Promise<File>((resolve, reject) => {
+                        img.onload = () => {
+                            URL.revokeObjectURL(objectUrl);
+                            const canvas = document.createElement('canvas');
+                            let { width, height } = img;
+                            const MAX_SIZE = 2400; // Optimal for web and admin
+
+                            if (width > height && width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            } else if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return reject('Canvas context not available');
+
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    resolve(new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+                                } else {
+                                    reject('Blob creation failed');
+                                }
+                            }, 'image/jpeg', 0.85);
+                        };
+                        img.onerror = () => reject('Image load failed');
+                    });
+                } catch (e) {
+                    console.warn('Browser compression failed, uploading original', e);
+                }
+            }
+
+            if (finalImageFile) {
+                formDataObj.append('image', finalImageFile);
             }
 
             if (editingTour) {

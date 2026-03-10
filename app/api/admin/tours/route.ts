@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         // Handle image upload if provided
         const imageFile = formData.get('image') as File | null;
         if (imageFile && imageFile.size > 0) {
-            const uploadResult = await saveImage('tours', 'upcoming', imageFile);
+            const uploadResult = await saveImage('/tours', imageFile);
             if (uploadResult.success && uploadResult.url) {
                 tourData.image_url = uploadResult.url;
             }
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         const result = await createTour(tourData);
 
         if (result.success) {
-            revalidatePath('/');
+            revalidatePath('/', 'layout');
             return NextResponse.json({ success: true, tour: result.tour });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -107,7 +107,7 @@ export async function PUT(req: Request) {
         // Handle image upload if provided
         const imageFile = formData.get('image') as File | null;
         if (imageFile && imageFile.size > 0) {
-            const uploadResult = await saveImage('tours', 'upcoming', imageFile);
+            const uploadResult = await saveImage('/tours', imageFile);
             if (uploadResult.success && uploadResult.url) {
                 updates.image_url = uploadResult.url;
             }
@@ -116,7 +116,7 @@ export async function PUT(req: Request) {
         const result = await updateTour(id, updates);
 
         if (result.success) {
-            revalidatePath('/');
+            revalidatePath('/', 'layout');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -152,7 +152,7 @@ export async function PATCH(req: Request) {
         }
 
         if (result.success) {
-            revalidatePath('/');
+            revalidatePath('/', 'layout');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -175,7 +175,7 @@ export async function DELETE(req: Request) {
         const result = await deleteTour(id);
 
         if (result.success) {
-            revalidatePath('/');
+            revalidatePath('/', 'layout');
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

@@ -663,15 +663,14 @@ async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: 
  * Upload image to ImageKit (with automatic compression)
  */
 export async function saveImage(
-    continentName: string,
-    locationName: string,
-    file: File,
-    countryName?: string
+    folderPath: string,
+    file: File
 ): Promise<{ success: boolean; path?: string; url?: string; error?: string }> {
     try {
         const bytes = await file.arrayBuffer();
         const originalBuffer = Buffer.from(bytes);
-        const folder = getLocationFolderPath(continentName, locationName, countryName);
+        // We use the provided folder path directly
+        const folder = folderPath;
 
         // Compress image before upload to save storage
         const { data: compressedBuffer, name: compressedName } = await compressImage(originalBuffer, file.name);
