@@ -51,6 +51,70 @@ export default function ShareExperiencePage() {
 
     const MAX_CLIENT_PHOTO_BYTES = 10 * 1024 * 1024;
 
+    const optimizePhotoForUpload = async (file: File): Promise<File> => {
+        if (!file.type.startsWith('image/')) return file;
+
+        if (file.size <= 2 * 1024 * 1024) {
+            return file;
+        }
+
+        return new Promise((resolve) => {
+            const objectUrl = URL.createObjectURL(file);
+            const image = new window.Image();
+            image.src = objectUrl;
+
+            image.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+
+                const canvas = document.createElement('canvas');
+                let width = image.width;
+                let height = image.height;
+                const MAX_SIZE = 2400;
+
+                if (width > height && width > MAX_SIZE) {
+                    height = Math.round((height * MAX_SIZE) / width);
+                    width = MAX_SIZE;
+                } else if (height > MAX_SIZE) {
+                    width = Math.round((width * MAX_SIZE) / height);
+                    height = MAX_SIZE;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                if (!ctx) {
+                    resolve(file);
+                    return;
+                }
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(image, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (!blob || blob.size >= file.size) {
+                        resolve(file);
+                        return;
+                    }
+
+                    const optimized = new File(
+                        [blob],
+                        file.name.replace(/\.[^.]+$/, '.jpg'),
+                        { type: 'image/jpeg' }
+                    );
+
+                    resolve(optimized);
+                }, 'image/jpeg', 0.82);
+            };
+
+            image.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file);
+            };
+        });
+    };
+
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length + selectedPhotos.length > 5) {
@@ -107,8 +171,17 @@ export default function ShareExperiencePage() {
 
             // Add photos
             if (selectedPhotos.length > 0) {
-                setUploadProgress(`Uploading ${selectedPhotos.length} photo(s)...`);
-                selectedPhotos.forEach((photo, i) => {
+                const optimizedPhotos: File[] = [];
+
+                for (let i = 0; i < selectedPhotos.length; i++) {
+                    const photo = selectedPhotos[i];
+                    setUploadProgress(`Optimizing photo ${i + 1}/${selectedPhotos.length}...`);
+                    const optimized = await optimizePhotoForUpload(photo);
+                    optimizedPhotos.push(optimized);
+                }
+
+                setUploadProgress(`Uploading ${optimizedPhotos.length} photo(s)...`);
+                optimizedPhotos.forEach((photo, i) => {
                     formData.append(`photo_${i}`, photo);
                 });
             }
@@ -121,8 +194,18 @@ export default function ShareExperiencePage() {
             if (res.ok) {
                 setSubmitted(true);
             } else {
-                const result = await res.json().catch(() => null);
-                throw new Error(result?.error || `Failed to submit (HTTP ${res.status})`);
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const result = await res.json().catch(() => null);
+                    throw new Error(result?.error || `Failed to submit (HTTP ${res.status})`);
+                }
+
+                const text = await res.text().catch(() => '');
+                const fallbackMessage = text
+                    ? text.slice(0, 180)
+                    : `Failed to submit (HTTP ${res.status})`;
+
+                throw new Error(fallbackMessage);
             }
         } catch (error) {
             console.error(error);
