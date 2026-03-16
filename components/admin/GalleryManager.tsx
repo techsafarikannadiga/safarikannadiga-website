@@ -171,11 +171,8 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
             try {
                 // Auto-compress large files to stay under ImageKit's 25MB limit
                 let uploadableFile = file;
-                if (file.size > 10 * 1024 * 1024) { // >10MB check as per plan
+                if (file.size > 10 * 1024 * 1024) {
                     setUploadProgress(`Compressing large file ${index + 1}/${files.length}: ${file.name}...`);
-                    uploadableFile = await compressInBrowser(file);
-                } else if (file.size > 4 * 1024 * 1024) { // >4MB optimization
-                    setUploadProgress(`Optimizing ${index + 1}/${files.length}: ${file.name}...`);
                     uploadableFile = await compressInBrowser(file);
                 }
 

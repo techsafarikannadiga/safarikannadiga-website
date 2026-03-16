@@ -49,6 +49,8 @@ export default function ShareExperiencePage() {
         'Other'
     ];
 
+    const MAX_CLIENT_PHOTO_BYTES = 10 * 1024 * 1024;
+
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length + selectedPhotos.length > 5) {
@@ -61,7 +63,7 @@ export default function ShareExperiencePage() {
                 alert(`${file.name} is not an image file`);
                 return false;
             }
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit per file
+            if (file.size > MAX_CLIENT_PHOTO_BYTES) {
                 alert(`${file.name} is too large (max 10MB per photo)`);
                 return false;
             }
@@ -119,12 +121,17 @@ export default function ShareExperiencePage() {
             if (res.ok) {
                 setSubmitted(true);
             } else {
-                const result = await res.json();
-                throw new Error(result.error || 'Failed to submit');
+                const result = await res.json().catch(() => null);
+                throw new Error(result?.error || `Failed to submit (HTTP ${res.status})`);
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to submit. Please try again or email us directly.");
+
+            const message = error instanceof Error
+                ? error.message
+                : 'Failed to submit. Please try again or email us directly.';
+
+            alert(message);
         } finally {
             setIsSubmitting(false);
             setUploadProgress('');

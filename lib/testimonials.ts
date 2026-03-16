@@ -197,36 +197,63 @@ export async function createTestimonial(
     data: TestimonialInput,
     photos?: File[]
 ): Promise<{ success: boolean; id?: string; error?: string }> {
-    // Use admin client if available, otherwise fall back to regular client
     const client = supabaseAdmin || supabase;
     if (!client) return { success: false, error: 'Database not configured' };
 
-    // Upload photos if provided
     let photoUrls: string[] = [];
     if (photos && photos.length > 0) {
         photoUrls = await uploadTestimonialPhotos(photos);
     }
 
-    const { data: result, error } = await client
-        .from('testimonials')
-        .insert([{
-            name: data.name,
-            email: data.email,
-            safari: data.safari,
-            visit_date: data.visit_date || null,
-            rating: data.rating,
-            story: data.story,
-            highlights: data.highlights || null,
-            photos: photoUrls,
-            approved: data.approved ?? false, // Defaults to false unless specified (admin only)
-            source: data.source || 'website',
-            avatar_url: data.avatar_url,
-        }])
-        .select('id')
-        .single();
+    const basePayload = {
+        name: data.name,
+        email: data.email,
+        safari: data.safari,
+        visit_date: data.visit_date || null,
+        rating: data.rating,
+        story: data.story,
+        highlights: data.highlights || null,
+        photos: photoUrls,
+        approved: data.approved ?? false,
+    };
+
+    const insertTestimonial = async (includeExtendedFields: boolean) => {
+        const payload = includeExtendedFields
+            ? [{ ...basePayload, source: data.source || 'website', avatar_url: data.avatar_url }]
+            : [basePayload];
+
+        return client
+            .from('testimonials')
+            .insert(payload)
+            .select('id')
+            .single();
+    };
+
+    let { data: result, error } = await insertTestimonial(true);
+
+    if (error) {
+        const errorText = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+        const missingOptionalColumn =
+            (errorText.includes('column') && errorText.includes('source') && errorText.includes('does not exist')) ||
+            (errorText.includes('column') && errorText.includes('avatar_url') && errorText.includes('does not exist'));
+
+        if (missingOptionalColumn) {
+            console.warn('Testimonials schema missing source/avatar_url columns. Retrying insert without optional fields.');
+            ({ data: result, error } = await insertTestimonial(false));
+        }
+    }
 
     if (error) {
         console.error('Error creating testimonial:', error);
+
+        const errorText = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+        if (errorText.includes('relation') && errorText.includes('testimonials') && errorText.includes('does not exist')) {
+            return {
+                success: false,
+                error: 'Testimonials table not found. Run scripts/supabase-tours-testimonials.sql in Supabase SQL Editor.'
+            };
+        }
+
         return { success: false, error: error.message };
     }
 

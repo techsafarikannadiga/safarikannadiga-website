@@ -119,7 +119,7 @@ export function ToursAdmin() {
             let finalImageFile = imageFile;
 
             // Prevent Vercel/Netlify payload limits by compressing large files client-side
-            if (imageFile && imageFile.size > 4 * 1024 * 1024) {
+            if (imageFile && imageFile.size > 10 * 1024 * 1024) {
                 try {
                     const objectUrl = URL.createObjectURL(imageFile);
                     const img = new window.Image();
