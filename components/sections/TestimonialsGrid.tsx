@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Testimonial } from '@/lib/testimonials';
+import { formatVisitDate } from '@/lib/utils/date';
+import { Avatar } from '@/components/ui/Avatar';
 
 interface TestimonialsGridProps {
     testimonials: Testimonial[];
@@ -55,13 +57,12 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
                         )}
 
                         <div className="mt-auto flex items-center gap-4 pt-4 border-t border-neutral-gray/10">
-                            <div className="w-12 h-12 rounded-full bg-safari-gold/20 flex items-center justify-center font-bold text-safari-gold text-lg overflow-hidden relative">
-                                {testimonial.avatar_url ? (
-                                    <Image src={testimonial.avatar_url} alt={testimonial.name} fill className="object-cover" />
-                                ) : (
-                                    testimonial.name.charAt(0).toUpperCase()
-                                )}
-                            </div>
+                            <Avatar
+                                src={testimonial.avatar_url}
+                                name={testimonial.name}
+                                sizeClasses="w-12 h-12"
+                                textSizeClasses="text-lg"
+                            />
                             <div>
                                 {/* Name and Source */}
                                 <h4 className="font-bold text-sm text-neutral-charcoal flex items-center gap-2">
@@ -82,7 +83,7 @@ export function TestimonialsGrid({ testimonials }: TestimonialsGridProps) {
                                 </h4>
                                 <p className="text-neutral-gray text-xs">
                                     {testimonial.safari}
-                                    {testimonial.visit_date && ` • ${new Date(testimonial.visit_date + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                                    {testimonial.visit_date && ` • ${formatVisitDate(testimonial.visit_date)}`}
                                 </p>
                             </div>
                         </div>

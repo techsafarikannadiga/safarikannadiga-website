@@ -3,13 +3,13 @@
  * ============================================
  * 
  * This is the core module for managing the safari photo gallery.
- * It combines ImageKit (image storage) and Supabase (metadata) into
+ * It combines ImageKit (image storage) and Firebase (metadata) into
  * a unified API for the frontend and admin panel.
  * 
  * Architecture:
  * - ImageKit: Stores actual image files (20GB free, no rate limits)
- * - Supabase: Stores location metadata and cover photo selections
- * - Falls back to local JSON files if Supabase not configured
+ * - Firebase: Stores location metadata and cover photo selections
+ * - Falls back to local JSON files if Firebase is not configured
  * 
  * Key Functions:
  * - getContinents()      - Get all continents with location counts
@@ -31,7 +31,7 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import {
-    isSupabaseConfigured,
+    isFirebaseConfigured,
     getLocationsFromDB,
     addLocationToDB,
     deleteLocationFromDB,
@@ -40,7 +40,7 @@ import {
     setCoverInDB,
     deleteCoverFromDB,
     GalleryLocationDB
-} from './supabase';
+} from './firebase-db';
 import {
     isImageKitConfigured,
     listFiles,
@@ -50,6 +50,7 @@ import {
     getLocationFolderPath,
     ImageKitFile
 } from './imagekit';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 const GALLERY_ROOT = 'safari-gallery';
 
@@ -68,9 +69,9 @@ interface CacheEntry<T> {
 
 // Cache configuration
 const CACHE_CONFIG = {
-    TTL: 5 * 60 * 1000,        // 5 minutes - reasonable for gallery data
+    TTL: 60 * 60 * 1000,       // 1 hour - aggressive caching to reduce Firestore reads
     MAX_ENTRIES: 100,           // Prevent memory leaks
-    ENABLED: false,             // Disabled for immediate reflection in admin
+    ENABLED: true,             // Re-enabled for production performance
 };
 
 // Type-safe cache store
@@ -116,7 +117,12 @@ function setCache<T>(key: string, data: T): void {
  */
 export function clearCache(): void {
     cacheStore.clear();
-    console.log('[Cache] Cleared all entries');
+    try {
+        revalidateTag('gallery', 'max');
+    } catch (e) {
+        // Ignore if called outside of next runtime
+    }
+    console.log('[Cache] Cleared internal runtime memory map and purged Next.js data tags');
 }
 
 /**
@@ -178,7 +184,7 @@ export interface GalleryContinent {
 }
 
 // ============================================================================
-// LOCAL FILE FALLBACK (for development without Supabase)
+// LOCAL FILE FALLBACK (for development without Firebase)
 // ============================================================================
 
 function getGalleryConfigLocal() {
@@ -225,12 +231,12 @@ function saveGalleryCoversLocal(covers: Record<string, string>): boolean {
 }
 
 // ============================================================================
-// UNIFIED CONFIG ACCESS (Supabase or Local)
+// UNIFIED CONFIG ACCESS (Firebase or Local)
 // ============================================================================
 
 async function getGalleryConfig() {
-    if (isSupabaseConfigured()) {
-        // Get from Supabase
+    if (isFirebaseConfigured()) {
+        // Get from Firebase
         const locations = await getLocationsFromDB();
 
         // Group by continent
@@ -271,7 +277,7 @@ export interface CoverData {
 }
 
 export async function getGalleryCovers(): Promise<Record<string, CoverData>> {
-    if (isSupabaseConfigured()) {
+    if (isFirebaseConfigured()) {
         const rawCovers = await getCoversFromDB();
         const normalized: Record<string, CoverData> = {};
         Object.entries(rawCovers).forEach(([key, value]) => {
@@ -354,38 +360,34 @@ async function getImageKitImages(folderPath: string): Promise<GalleryImage[]> {
 }
 
 /**
- * Get all continents with their location counts (with caching)
+ * Internal base fetcher for continents data
  */
-export async function getContinents(): Promise<GalleryContinent[]> {
-    // Check cache first
-    const cacheKey = 'continents';
-    const cached = getCached<GalleryContinent[]>(cacheKey);
-    if (cached) return cached;
-
-    const config = await getGalleryConfig();
+const fetchContinentsRawCached = unstable_cache(
+    async (): Promise<GalleryContinent[]> => {
+        console.log('[Cache Miss] Fetching gallery continents data');
+        const config = await getGalleryConfig();
     const savedCovers = await getGalleryCovers();
 
     const continents = await Promise.all(config.continents.map(async (continent: any) => {
         let totalImages = 0;
         let continentCoverFromLocation = '';
 
-        const locationsWithCounts = [];
-        for (const loc of continent.locations) {
+        // Parallelize image fetching for ALL locations in this continent simultaneously
+        const locationsWithCounts = await Promise.all(continent.locations.map(async (loc: any) => {
             const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
             const images = await getImageKitImages(folderPath);
-            totalImages += images.length;
-
-            // Normalize keys for robust matching
+            
+            // Add to our local count tracking safely
+            // (we track totalImages below to avoid concurrency conflicts if needed, 
+            // but counting length is local anyway)
+            
             const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
             const savedCoverData = savedCovers[coverKey];
             const savedCover = savedCoverData?.cover_url;
-
-            // Improved robust matching
             const isUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
 
             let coverImage = '/images/placeholder-safari.jpg';
 
-            // Try to find a match in the current images list first (preferred for up-to-date URLs)
             const matchingImage = savedCover ? images.find(img =>
                 normalizeUrl(img.src) === normalizeUrl(savedCover) ||
                 img.publicId === savedCover ||
@@ -400,37 +402,37 @@ export async function getContinents(): Promise<GalleryContinent[]> {
                 coverImage = images[0].src;
             }
 
-            // Use first location with images as continent cover fallback
-            if (!continentCoverFromLocation && images.length > 0) {
-                continentCoverFromLocation = coverImage;
-            }
-
-            locationsWithCounts.push({
+            return {
                 ...loc,
                 coverImage,
                 imageCount: images.length,
+                imagesList: images, // store temporarily for reuse below to avoid secondary fetch
                 focalX: savedCoverData?.focal_x ?? 50,
                 focalY: savedCoverData?.focal_y ?? 50,
                 zoom: savedCoverData?.zoom ?? 1.0,
                 isFeatured: loc.is_featured ?? false,
                 featuredOrder: loc.featured_order ?? 0,
-            });
+            };
+        }));
+
+        // Post-process totals and covers using pre-loaded data (CPU bound, no awaits)
+        for (const loc of locationsWithCounts) {
+            totalImages += loc.imageCount;
+            if (!continentCoverFromLocation && loc.imageCount > 0) {
+                continentCoverFromLocation = loc.coverImage;
+            }
         }
 
-        // Get continent cover image
-        // 1. Check for specific continent cover in savedCovers (and try to match against actual images for latest URLs)
         const continentKey = continent.name.toLowerCase().trim();
         const savedContinentCover = savedCovers[continentKey];
 
         let continentCover = '/images/placeholder-safari.jpg';
 
         if (savedContinentCover) {
-            // Check if saved cover exists in any of the locations of this continent to get the most updated URL
             let matchedUrl = '';
+            // Leverage preloaded image lists, NO network calls inside this loop now!
             for (const loc of locationsWithCounts) {
-                const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
-                const images = await getImageKitImages(folderPath);
-                const match = images.find(img =>
+                const match = loc.imagesList.find((img: any) =>
                     normalizeUrl(img.src) === normalizeUrl(savedContinentCover.cover_url) ||
                     img.publicId === savedContinentCover.cover_url ||
                     img.filename === savedContinentCover.cover_url
@@ -447,21 +449,26 @@ export async function getContinents(): Promise<GalleryContinent[]> {
             continentCover = continent.coverImage;
         }
 
+        // Strip temporary preloaded images from final object returned to user
+        const cleanLocations = locationsWithCounts.map(({ imagesList, ...cleanLoc }) => cleanLoc);
+
         return {
             id: continent.id,
             name: continent.name,
             slug: continent.slug,
             description: continent.description,
             coverImage: continentCover,
-            locations: locationsWithCounts,
+            locations: cleanLocations,
             locationCount: continent.locations.length,
             totalImages
         };
     }));
 
-    // Save to cache
-    setCache(cacheKey, continents);
     return continents;
+}, ['gallery-continents'], { revalidate: 3600, tags: ['gallery'] });
+
+export async function getContinents(): Promise<GalleryContinent[]> {
+    return fetchContinentsRawCached();
 }
 
 /**
@@ -491,25 +498,30 @@ export async function getLocation(continentSlug: string, locationSlug: string): 
 /**
  * Get images for a location (with caching)
  */
+/**
+ * Persistent cache fetcher for specific location images
+ */
+const fetchLocationImagesCached = unstable_cache(
+    async (continentSlug: string, locationSlug: string): Promise<GalleryImage[]> => {
+        const config = await getGalleryConfig();
+        const continent = config.continents.find((c: any) => c.slug === continentSlug);
+        if (!continent) return [];
+
+        const location = continent.locations.find((l: any) => l.slug === locationSlug);
+        if (!location) return [];
+
+        const folderPath = getLocationFolderPath(continent.name, location.name, location.country);
+        return await getImageKitImages(folderPath);
+    },
+    ['location-images'],
+    { revalidate: 3600, tags: ['gallery'] }
+);
+
+/**
+ * Get images for a location (with caching)
+ */
 export async function getImages(continentSlug: string, locationSlug: string): Promise<GalleryImage[]> {
-    // Check cache first
-    const cacheKey = `images:${continentSlug}:${locationSlug}`;
-    const cached = getCached<GalleryImage[]>(cacheKey);
-    if (cached) return cached;
-
-    const config = await getGalleryConfig();
-    const continent = config.continents.find((c: any) => c.slug === continentSlug);
-    if (!continent) return [];
-
-    const location = continent.locations.find((l: any) => l.slug === locationSlug);
-    if (!location) return [];
-
-    const folderPath = getLocationFolderPath(continent.name, location.name, location.country);
-    const images = await getImageKitImages(folderPath);
-
-    // Cache the result
-    setCache(cacheKey, images);
-    return images;
+    return fetchLocationImagesCached(continentSlug, locationSlug);
 }
 
 /**
@@ -588,7 +600,7 @@ export async function setCoverPhoto(
             ? `${continentName.trim()}/${locationName.trim()}`.toLowerCase()
             : continentName.trim().toLowerCase();
 
-        if (isSupabaseConfigured()) {
+        if (isFirebaseConfigured()) {
             const result = await setCoverInDB(key, imagePath, focalPoint);
             if (result.success) clearCache();
             return result;
@@ -744,7 +756,7 @@ export async function addLocation(
     try {
         const slug = createSlug(locationData.name);
 
-        if (isSupabaseConfigured()) {
+        if (isFirebaseConfigured()) {
             // Get continent name from slug
             const continentNames: Record<string, string> = {
                 'africa': 'Africa',
@@ -841,7 +853,7 @@ export async function deleteLocation(
 
         // Remove cover photo entry
         const coverKey = `${continent.name}/${location.name}`;
-        if (isSupabaseConfigured()) {
+        if (isFirebaseConfigured()) {
             await deleteCoverFromDB(coverKey);
             // Delete location from DB
             const locationId = `${continentSlug}-${locationSlug}`;
@@ -888,7 +900,7 @@ export async function updateLocation(
     }
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (isSupabaseConfigured()) {
+        if (isFirebaseConfigured()) {
             const locationId = `${continentSlug}-${locationSlug}`;
             const result = await updateLocationInDB(locationId, updates);
             if (result.success) clearCache();

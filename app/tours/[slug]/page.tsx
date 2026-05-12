@@ -9,6 +9,9 @@ interface TourPageProps {
     params: Promise<{ slug: string }>;
 }
 
+// ISR: Revalidate every 1 hour to reduce Firestore reads
+export const revalidate = 3600; // 1 hour in seconds
+
 export async function generateStaticParams() {
     const tours = getAllContent('tours');
     return tours.map((tour: any) => ({ slug: tour.slug }));

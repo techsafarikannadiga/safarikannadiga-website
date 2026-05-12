@@ -46,3 +46,8 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Safeguard backups & large logs
+/backups/
+*.log
+scripts/*.sql

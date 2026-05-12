@@ -8,12 +8,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "compress-images": "node scripts/compress-images.js"
+    "compress-images": "node scripts/compress-images.js",
+    "migrate:supabase:firebase": "tsx scripts/migrate-supabase-to-firebase.ts"
   },
   "dependencies": {
     "@imagekit/nodejs": "^7.2.1",
-    "@supabase/supabase-js": "^2.93.2",
+    "@opentelemetry/api": "^1.9.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.9.0",
     "gray-matter": "^4.0.3",
     "next": "^16.1.4",
     "react": "^19.2.3",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.10.3",
+    "@supabase/supabase-js": "^2.105.4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -6,6 +6,7 @@ import {
     unapproveTestimonial,
     deleteTestimonial
 } from '@/lib/testimonials';
+import { recordAuditTrail } from '@/lib/audit';
 
 // GET: List all testimonials (admin)
 export async function GET() {
@@ -33,6 +34,7 @@ export async function PATCH(req: Request) {
 
         if (result.success) {
             revalidatePath('/');
+            await recordAuditTrail(approved ? 'PUBLISH' : 'UPDATE', 'TESTIMONIAL', id, { approved });
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -56,6 +58,7 @@ export async function DELETE(req: Request) {
 
         if (result.success) {
             revalidatePath('/');
+            await recordAuditTrail('DELETE', 'TESTIMONIAL', id);
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -81,6 +84,10 @@ export async function POST(req: Request) {
 
         if (result.success) {
             revalidatePath('/');
+            await recordAuditTrail('CREATE', 'TESTIMONIAL', result.id || 'unknown', {
+                source: body.source || 'admin',
+                approved: true,
+            });
             return NextResponse.json({ success: true, id: result.id });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

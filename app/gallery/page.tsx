@@ -9,9 +9,9 @@ export const metadata: Metadata = {
     description: 'Browse stunning wildlife photography from SafariKannadiga expeditions across Africa and Asia. Lions, tigers, elephants, and more.',
 };
 
-// Use dynamic rendering for immediate reflection of admin changes
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ISR: Revalidate every 1 hour to balance freshness with Firestore read costs
+// Admin changes will be reflected within 1 hour without constant re-renders
+export const revalidate = 3600; // 1 hour in seconds
 
 export default async function GalleryPage() {
     const continents = await getContinents();

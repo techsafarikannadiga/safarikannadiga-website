@@ -1,47 +1,27 @@
 /**
  * Testimonials Management Module
  * ===============================
- * 
+ *
  * Handles user testimonial submissions and display.
- * Includes image compression before upload.
- * 
- * @author Samarth V (samarthv.me)
+ * Uses Firestore for metadata and ImageKit for photo uploads.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import sharp from 'sharp';
+import { FieldValue, Timestamp, getFirebaseDb } from './firebase-admin';
+import { isFirebaseConfigured } from './firebase-db';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-// Public client for reading
-let supabase: SupabaseClient | null = null;
-// Admin client for writing (bypasses RLS)
-let supabaseAdmin: SupabaseClient | null = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
-}
-
-if (supabaseUrl && supabaseServiceRoleKey) {
-    supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-    });
-}
-
-// Image compression settings
 const IMAGE_COMPRESSION = {
     maxWidth: 1200,
     maxHeight: 800,
     quality: 80,
 };
 
-// Types
 export interface Testimonial {
     id: string;
     name: string;
-    email: string;
+    email: string | null;
     safari: string;
     visit_date: string | null;
     rating: number;
@@ -52,76 +32,90 @@ export interface Testimonial {
     created_at: string;
     source?: 'website' | 'google' | 'facebook';
     avatar_url?: string;
+    external_id?: string;
+    source_url?: string;
 }
 
 export interface TestimonialInput {
     name: string;
-    email: string;
+    email?: string | null;
     safari: string;
-    visit_date?: string;
+    visit_date?: string | null;
     rating: number;
     story: string;
-    highlights?: string;
+    highlights?: string | null;
     source?: 'website' | 'google' | 'facebook';
     avatar_url?: string;
-    approved?: boolean; // Admin can create approved testimonials directly
+    external_id?: string;
+    source_url?: string;
+    approved?: boolean;
 }
 
-/**
- * Check if testimonials feature is available
- */
+function toIso(value: unknown): string {
+    if (!value) return new Date().toISOString();
+    if (value instanceof Timestamp) return value.toDate().toISOString();
+    if (value instanceof Date) return value.toISOString();
+    return String(value);
+}
+
+function normalizeTestimonial(id: string, data: FirebaseFirestore.DocumentData): Testimonial {
+    return {
+        id,
+        name: data.name || '',
+        email: data.email || null,
+        safari: data.safari || '',
+        visit_date: data.visit_date || null,
+        rating: Number(data.rating || 5),
+        story: data.story || '',
+        highlights: data.highlights || null,
+        photos: Array.isArray(data.photos) ? data.photos : [],
+        approved: data.approved ?? false,
+        created_at: toIso(data.created_at),
+        source: data.source,
+        avatar_url: data.avatar_url,
+        external_id: data.external_id,
+        source_url: data.source_url,
+    };
+}
+
+function testimonialDocId(data: TestimonialInput): string | undefined {
+    if (!data.external_id) return undefined;
+    return crypto.createHash('sha1').update(data.external_id).digest('hex');
+}
+
 export function isTestimonialsConfigured(): boolean {
-    return !!(supabaseUrl && supabaseAnonKey && supabase);
+    return isFirebaseConfigured();
 }
 
 /**
- * Get approved testimonials (public)
+ * Base internal cached fetcher for all testimonials.
  */
+const fetchAllTestimonialsCached = unstable_cache(
+    async (): Promise<Testimonial[]> => {
+        if (!isFirebaseConfigured()) return [];
+        console.log('[Cache Miss] Fetching all testimonials from Firestore');
+        const snapshot = await getFirebaseDb().collection('testimonials').get();
+        return snapshot.docs
+            .map((doc) => normalizeTestimonial(doc.id, doc.data()))
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    },
+    ['all-testimonials'],
+    {
+        revalidate: 3600,
+        tags: ['testimonials']
+    }
+);
+
 export async function getApprovedTestimonials(limit?: number): Promise<Testimonial[]> {
-    if (!supabase) return [];
-
-    let query = supabase
-        .from('testimonials')
-        .select('*')
-        .eq('approved', true)
-        .order('created_at', { ascending: false });
-
-    if (limit) {
-        query = query.limit(limit);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-        console.error('Error fetching testimonials:', error);
-        return [];
-    }
-
-    return data || [];
+    const testimonials = await fetchAllTestimonialsCached();
+    const approved = testimonials.filter(t => t.approved);
+    return limit ? approved.slice(0, limit) : approved;
 }
 
-/**
- * Get all testimonials (admin)
- */
 export async function getAllTestimonials(): Promise<Testimonial[]> {
-    if (!supabaseAdmin) return [];
-
-    const { data, error } = await supabaseAdmin
-        .from('testimonials')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('Error fetching all testimonials:', error);
-        return [];
-    }
-
-    return data || [];
+    return fetchAllTestimonialsCached();
 }
 
-/**
- * Compress image before upload
- */
 async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: Buffer; name: string }> {
     try {
         const image = sharp(buffer);
@@ -144,32 +138,21 @@ async function compressImage(buffer: Buffer, fileName: string): Promise<{ data: 
             .jpeg({ quality: IMAGE_COMPRESSION.quality, mozjpeg: true })
             .toBuffer();
 
-        const newName = fileName.replace(/\.[^.]+$/, '.jpg');
-
-        console.log(`Compressed testimonial image: ${(buffer.length / 1024).toFixed(0)}KB → ${(compressedBuffer.length / 1024).toFixed(0)}KB`);
-
-        return { data: compressedBuffer, name: newName };
+        return { data: compressedBuffer, name: fileName.replace(/\.[^.]+$/, '.jpg') };
     } catch (error) {
         console.warn('Image compression failed, uploading original:', error);
         return { data: buffer, name: fileName };
     }
 }
 
-/**
- * Upload testimonial photos to ImageKit
- */
 async function uploadTestimonialPhotos(files: File[]): Promise<string[]> {
     const uploadedUrls: string[] = [];
 
-    for (const file of files.slice(0, 5)) { // Max 5 photos
+    for (const file of files.slice(0, 5)) {
         try {
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-
-            // Compress image
             const { data: compressedData, name: compressedName } = await compressImage(buffer, file.name);
-
-            // Upload to ImageKit using the uploadFile function from imagekit.ts
             const { uploadFile } = await import('./imagekit');
             const timestamp = Date.now();
             const result = await uploadFile(
@@ -178,9 +161,7 @@ async function uploadTestimonialPhotos(files: File[]): Promise<string[]> {
                 '/testimonials'
             );
 
-            if (result.success && result.url) {
-                uploadedUrls.push(result.url);
-            }
+            if (result.success && result.url) uploadedUrls.push(result.url);
         } catch (error) {
             console.error('Error uploading testimonial photo:', error);
         }
@@ -189,130 +170,76 @@ async function uploadTestimonialPhotos(files: File[]): Promise<string[]> {
     return uploadedUrls;
 }
 
-
-/**
- * Create a new testimonial with photos
- */
 export async function createTestimonial(
     data: TestimonialInput,
     photos?: File[]
 ): Promise<{ success: boolean; id?: string; error?: string }> {
-    const client = supabaseAdmin || supabase;
-    if (!client) return { success: false, error: 'Database not configured' };
+    try {
+        if (!isFirebaseConfigured()) return { success: false, error: 'Database not configured' };
 
-    let photoUrls: string[] = [];
-    if (photos && photos.length > 0) {
-        photoUrls = await uploadTestimonialPhotos(photos);
-    }
+        const photoUrls = photos?.length ? await uploadTestimonialPhotos(photos) : [];
+        const docId = testimonialDocId(data);
+        const ref = docId
+            ? getFirebaseDb().collection('testimonials').doc(docId)
+            : getFirebaseDb().collection('testimonials').doc();
 
-    const basePayload = {
-        name: data.name,
-        email: data.email,
-        safari: data.safari,
-        visit_date: data.visit_date || null,
-        rating: data.rating,
-        story: data.story,
-        highlights: data.highlights || null,
-        photos: photoUrls,
-        approved: data.approved ?? false,
-    };
-
-    const insertTestimonial = async (includeExtendedFields: boolean) => {
-        const payload = includeExtendedFields
-            ? [{ ...basePayload, source: data.source || 'website', avatar_url: data.avatar_url }]
-            : [basePayload];
-
-        return client
-            .from('testimonials')
-            .insert(payload)
-            .select('id')
-            .single();
-    };
-
-    let { data: result, error } = await insertTestimonial(true);
-
-    if (error) {
-        const errorText = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
-        const missingOptionalColumn =
-            (errorText.includes('column') && errorText.includes('source') && errorText.includes('does not exist')) ||
-            (errorText.includes('column') && errorText.includes('avatar_url') && errorText.includes('does not exist'));
-
-        if (missingOptionalColumn) {
-            console.warn('Testimonials schema missing source/avatar_url columns. Retrying insert without optional fields.');
-            ({ data: result, error } = await insertTestimonial(false));
+        if (docId) {
+            const existing = await ref.get();
+            if (existing.exists) return { success: true, id: ref.id };
         }
-    }
 
-    if (error) {
+        await ref.set({
+            name: data.name,
+            email: data.email ?? null,
+            safari: data.safari,
+            visit_date: data.visit_date || null,
+            rating: data.rating,
+            story: data.story,
+            highlights: data.highlights || null,
+            photos: photoUrls,
+            approved: data.approved ?? false,
+            source: data.source || 'website',
+            avatar_url: data.avatar_url || null,
+            external_id: data.external_id || null,
+            source_url: data.source_url || null,
+            created_at: FieldValue.serverTimestamp(),
+        });
+
+        revalidateTag('testimonials', 'max');
+        return { success: true, id: ref.id };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to create testimonial';
         console.error('Error creating testimonial:', error);
-
-        const errorText = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
-        if (errorText.includes('relation') && errorText.includes('testimonials') && errorText.includes('does not exist')) {
-            return {
-                success: false,
-                error: 'Testimonials table not found. Run scripts/supabase-tours-testimonials.sql in Supabase SQL Editor.'
-            };
-        }
-
-        return { success: false, error: error.message };
+        return { success: false, error: message };
     }
-
-    return { success: true, id: result?.id };
 }
 
-/**
- * Approve a testimonial (admin)
- */
 export async function approveTestimonial(id: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
-
-    const { error } = await supabaseAdmin
-        .from('testimonials')
-        .update({ approved: true })
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error approving testimonial:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
+    return setTestimonialApproval(id, true);
 }
 
-/**
- * Unapprove a testimonial (admin)
- */
 export async function unapproveTestimonial(id: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
-
-    const { error } = await supabaseAdmin
-        .from('testimonials')
-        .update({ approved: false })
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error unapproving testimonial:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
+    return setTestimonialApproval(id, false);
 }
 
-/**
- * Delete a testimonial (admin)
- */
-export async function deleteTestimonial(id: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
-
-    const { error } = await supabaseAdmin
-        .from('testimonials')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error deleting testimonial:', error);
-        return { success: false, error: error.message };
+async function setTestimonialApproval(id: string, approved: boolean): Promise<{ success: boolean; error?: string }> {
+    try {
+        await getFirebaseDb().collection('testimonials').doc(id).set({ approved }, { merge: true });
+        revalidateTag('testimonials', 'max');
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update testimonial';
+        return { success: false, error: message };
     }
+}
 
-    return { success: true };
+export async function deleteTestimonial(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await getFirebaseDb().collection('testimonials').doc(id).delete();
+        revalidateTag('testimonials', 'max');
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete testimonial';
+        return { success: false, error: message };
+    }
 }

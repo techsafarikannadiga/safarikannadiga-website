@@ -16,12 +16,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        hostname: 'ik.imagekit.io',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'ik.imagekit.io',
+        hostname: '*.googleusercontent.com',
         pathname: '/**',
       },
     ],
@@ -49,10 +49,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
-  
-  experimental: {
-    // any experimental features if needed
   },
 };
 

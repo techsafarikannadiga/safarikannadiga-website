@@ -10,6 +10,7 @@ import {
     TourInput
 } from '@/lib/tours';
 import { saveImage } from '@/lib/gallery-cloud';
+import { recordAuditTrail } from '@/lib/audit';
 
 // GET: List all tours
 export async function GET(req: Request) {
@@ -69,6 +70,11 @@ export async function POST(req: Request) {
 
         if (result.success) {
             revalidatePath('/', 'layout');
+            revalidatePath('/tours', 'layout');
+            await recordAuditTrail('CREATE', 'TOUR', result.tour?.id || tourData.title, {
+                title: tourData.title,
+                destination: tourData.destination,
+            });
             return NextResponse.json({ success: true, tour: result.tour });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -117,6 +123,8 @@ export async function PUT(req: Request) {
 
         if (result.success) {
             revalidatePath('/', 'layout');
+            revalidatePath('/tours', 'layout');
+            await recordAuditTrail('UPDATE', 'TOUR', id, updates);
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -153,6 +161,8 @@ export async function PATCH(req: Request) {
 
         if (result.success) {
             revalidatePath('/', 'layout');
+            revalidatePath('/tours', 'layout');
+            await recordAuditTrail('UPDATE', 'TOUR', id, { action });
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -176,6 +186,8 @@ export async function DELETE(req: Request) {
 
         if (result.success) {
             revalidatePath('/', 'layout');
+            revalidatePath('/tours', 'layout');
+            await recordAuditTrail('DELETE', 'TOUR', id);
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });

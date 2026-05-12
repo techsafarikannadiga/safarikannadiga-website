@@ -1,35 +1,34 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+    ADMIN_SESSION_COOKIE,
+    clearAdminSessionCookies,
+    verifyAdminSessionCookie
+} from '@/lib/firebase-auth';
 
+/**
+ * Lightweight endpoint checking if the browser currently holds 
+ * a verified and cryptographically valid active session.
+ */
 export async function GET() {
     try {
         const cookieStore = await cookies();
-        const token = cookieStore.get('admin_token');
-        const adminPassword = process.env.ADMIN_PASSWORD;
-        
-        if (!adminPassword) {
-            return NextResponse.json({ authenticated: false, error: 'Admin not configured' });
+        const sessionCookie = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+        const user = await verifyAdminSessionCookie(sessionCookie);
+
+        if (user) {
+            return NextResponse.json({
+                authenticated: true, 
+                email: user.email,
+                id: user.id 
+            });
         }
-        
-        if (!token) {
-            return NextResponse.json({ authenticated: false });
-        }
-        
-        // Verify token
-        try {
-            const decoded = Buffer.from(token.value, 'base64').toString('utf8');
-            const [password] = decoded.split(':');
-            
-            if (password === adminPassword) {
-                return NextResponse.json({ authenticated: true });
-            }
-        } catch {
-            // Invalid token format
-        }
-        
-        return NextResponse.json({ authenticated: false });
+
+        const response = NextResponse.json({ authenticated: false });
+        clearAdminSessionCookies(response);
+        return response;
     } catch (error) {
-        console.error('Auth check error:', error);
-        return NextResponse.json({ authenticated: false });
+        console.error('Firebase session verify failure:', error);
+        return NextResponse.json({ authenticated: false, error: 'Session verification failed' });
     }
 }

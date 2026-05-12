@@ -48,35 +48,34 @@ export async function fetchGoogleReviews(): Promise<PlaceDetails | null> {
     }
 
     try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,rating,user_ratings_total,reviews&key=${apiKey}`;
+        // Using modern Places API (New) which supports newer service area listings
+        const url = `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,rating,userRatingCount,reviews&key=${apiKey}`;
 
         const response = await fetch(url, {
             next: { revalidate: 86400 } // Cache for 24 hours
         });
 
         if (!response.ok) {
-            throw new Error('Failed to fetch Google Reviews');
+            throw new Error('Failed to fetch Google Reviews via Places V1');
         }
 
         const data = await response.json();
 
-        if (data.status !== 'OK') {
-            throw new Error(`Google Places API error: ${data.status}`);
+        if (!data || data.error) {
+            throw new Error(`Google Places API error: ${data.error?.message || 'Unknown error'}`);
         }
 
-        const place = data.result;
-
         return {
-            name: place.name,
-            rating: place.rating,
-            totalReviews: place.user_ratings_total,
-            reviews: (place.reviews || []).map((review: any) => ({
-                authorName: review.author_name,
-                authorPhoto: review.profile_photo_url,
+            name: data.displayName?.text || 'Safari Kannadiga',
+            rating: data.rating || 5,
+            totalReviews: data.userRatingCount || 0,
+            reviews: (data.reviews || []).map((review: any) => ({
+                authorName: review.authorAttribution?.displayName || 'Google User',
+                authorPhoto: review.authorAttribution?.photoUri,
                 rating: review.rating,
-                text: review.text,
-                relativeTimeDescription: review.relative_time_description,
-                time: review.time
+                text: review.text?.text || '',
+                relativeTimeDescription: review.relativePublishTimeDescription,
+                time: review.publishTime ? Math.floor(new Date(review.publishTime).getTime() / 1000) : 0
             }))
         };
     } catch (error) {

@@ -6,7 +6,7 @@ A premium wildlife safari and photography tours website built with modern web te
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat-square&logo=tailwind-css)
 ![ImageKit](https://img.shields.io/badge/ImageKit-Storage-orange?style=flat-square)
-![Supabase](https://img.shields.io/badge/Supabase-Database-green?style=flat-square&logo=supabase)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore-orange?style=flat-square&logo=firebase)
 
 ---
 
@@ -43,7 +43,7 @@ A premium wildlife safari and photography tours website built with modern web te
 | **Language** | TypeScript 5.7 |
 | **Styling** | Tailwind CSS 3.4 |
 | **Image Storage** | ImageKit (20GB free tier) |
-| **Database** | Supabase PostgreSQL |
+| **Database** | Firebase Cloud Firestore |
 | **Animations** | Framer Motion |
 | **Image Compression** | Sharp |
 | **Fonts** | Inter + Playfair Display |
@@ -70,15 +70,15 @@ safarikannadiga-website/
 │   ├── gallery/              # Gallery components
 │   └── ui/                   # Reusable UI components
 ├── lib/
-│   ├── gallery-cloud.ts      # Main gallery logic (ImageKit + Supabase)
+│   ├── gallery-cloud.ts      # Main gallery logic (ImageKit + Firebase)
 │   ├── imagekit.ts           # ImageKit SDK wrapper
-│   ├── supabase.ts           # Supabase database client
+│   ├── firebase-db.ts        # Firebase database helpers
 │   ├── image-utils.ts        # Image URL utilities
 │   └── content.ts            # Content/settings loader
 ├── content/                  # JSON config files (fallback)
 ├── public/                   # Static assets
 └── scripts/
-    ├── supabase-setup.sql    # Database schema
+    ├── migrate-supabase-to-firebase.ts # One-time data migration
     └── bulk-upload.js        # Batch upload utility
 ```
 
@@ -90,7 +90,7 @@ safarikannadiga-website/
 - Node.js 18+
 - npm or yarn
 - ImageKit account (free)
-- Supabase account (free)
+- Firebase project with Auth and Firestore enabled
 
 ### 1. Clone & Install
 
@@ -109,16 +109,19 @@ Create `.env.local`:
 IMAGEKIT_PRIVATE_KEY=your_private_key
 NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_web_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project
+NEXT_PUBLIC_FIREBASE_APP_ID=your_web_app_id
+FIREBASE_PROJECT_ID=your-project
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
 ### 3. Database Setup
 
-Run the SQL in `scripts/supabase-setup.sql` in your Supabase SQL Editor to create:
-- `gallery_locations` - Location metadata
-- `gallery_covers` - Cover photo selections
+Create a Firebase project, add a Web app, enable Email/Password Authentication, create the admin user, and enable Cloud Firestore.
 
 ### 4. Run Development Server
 
@@ -130,26 +133,32 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (for admin database write access) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Firebase Web API key |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
+| `FIREBASE_CLIENT_EMAIL` | Yes | Firebase Admin service account email |
+| `FIREBASE_PRIVATE_KEY` | Yes | Firebase Admin private key |
+| `ADMIN_LOGIN_EMAIL` | Yes | Firebase Auth admin email for `/admin` login |
 
 ---
 
-## 🛠️ Database Schema Update
+## 🛠️ Database Migration
 
-If you are setting this up for the first time or updating, run the SQL scripts in your Supabase SQL Editor:
+For existing Supabase data, keep the temporary Supabase env vars and run:
 
-1. `scripts/supabase-setup.sql` - Core gallery tables (`gallery_locations`, `gallery_covers`)
-2. `scripts/supabase-tours-testimonials.sql` - Tours and Testimonials tables (`upcoming_tours`, `testimonials`)
-3. `scripts/supabase-gallery-likes.sql` - Gallery Likes system (`image_likes`)
-4. `scripts/supabase-newsletter.sql` - Newsletter Subscribers table (`subscribers`)
-5. `scripts/supabase-testimonials-source.sql` - Add source/avatar to testimonials (`testimonials`)
+```bash
+npm run migrate:supabase:firebase
+npm run migrate:supabase:firebase -- --write
+```
+
+The first command is a dry run. The second writes Firestore documents.
 
 ---
 
 ## 🎛️ Admin Panel Usage
 
-Access the admin panel at `/admin` (password: `adminpass`). The panel is now divided into three main tabs:
+Access the admin panel at `/admin` with the Firebase Auth user configured by `ADMIN_LOGIN_EMAIL`. Create that user in Firebase Console -> Authentication -> Users before deploying.
+
+The panel is divided into three main tabs:
 
 ### 1. 🦁 Tours Management
 - **View All Tours**: See status (Upcoming, Sold Out, Completed) and spots left.
@@ -204,7 +213,7 @@ Access the admin panel at `/admin` (password: `adminpass`). The panel is now div
 │         ┌──────────┴──────────┐                              │
 │         ▼                     ▼                              │
 │   ┌───────────┐        ┌───────────┐                        │
-│   │ ImageKit  │        │ Supabase  │                        │
+│   │ ImageKit  │        │ Firebase  │                        │
 │   │ (Images)  │        │ (Metadata)│                        │
 │   └───────────┘        └───────────┘                        │
 └─────────────────────────────────────────────────────────────┘
@@ -298,9 +307,13 @@ npm run lint      # Run ESLint
 |----------|----------|-------------|
 | `IMAGEKIT_PRIVATE_KEY` | Yes | ImageKit private API key |
 | `NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT` | Yes | ImageKit URL endpoint |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (for admin database write access) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Firebase Web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Firebase Auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | Firebase Web app ID |
+| `FIREBASE_PROJECT_ID` | Yes | Firebase Admin project ID |
+| `FIREBASE_CLIENT_EMAIL` | Yes | Firebase Admin service account email |
+| `FIREBASE_PRIVATE_KEY` | Yes | Firebase Admin private key |
 | `GOOGLE_PLACES_API_KEY` | Optional | Google Places API Key (for reviews sync) |
 | `NEXT_PUBLIC_GOOGLE_PLACE_ID` | Optional | Google Place ID (for reviews sync) |
 | `FACEBOOK_PAGE_ID` | Optional | Facebook Page ID (for reviews sync) |

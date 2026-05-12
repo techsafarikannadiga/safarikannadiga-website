@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { syncGoogleReviews, syncFacebookReviews } from '@/lib/review-sync';
+import { revalidateTag } from 'next/cache';
 
 export async function POST() {
     try {
@@ -7,6 +8,9 @@ export async function POST() {
             syncGoogleReviews(),
             syncFacebookReviews()
         ]);
+
+        // Invalidate testimonials cache so user sees new reviews instantly on frontend
+        revalidateTag('testimonials');
 
         return NextResponse.json({
             success: true,

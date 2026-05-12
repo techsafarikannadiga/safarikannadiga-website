@@ -7,6 +7,7 @@ import {
     setCoverPhoto
 } from '@/lib/gallery-cloud';
 import { getLocationFolderPath } from '@/lib/imagekit';
+import { recordAuditTrail } from '@/lib/audit';
 
 export const maxDuration = 60;
 
@@ -40,6 +41,12 @@ export async function POST(req: Request) {
         if (result.success) {
             revalidatePath('/', 'layout');
             revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('CREATE', 'GALLERY', result.path || folderPath, {
+                continent,
+                location,
+                country,
+                url: result.url,
+            });
             return NextResponse.json({ success: true, path: result.path, url: result.url });
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
@@ -64,6 +71,7 @@ export async function DELETE(req: Request) {
         if (result.success) {
             revalidatePath('/', 'layout');
             revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('DELETE', 'GALLERY', imagePath);
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 404 });
@@ -87,6 +95,12 @@ export async function PATCH(req: Request) {
         if (result.success) {
             // Revalidate everything for immediate reflection
             revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('UPDATE', 'COVER_PHOTO', imagePath, {
+                continent,
+                location,
+                focalPoint,
+            });
 
             return NextResponse.json({ success: true });
         } else {

@@ -1,7 +1,6 @@
 
-// Force dynamic rendering to ensure cover photo changes reflect immediately
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ISR: Revalidate every 1 hour to reduce Firestore reads
+export const revalidate = 3600; // 1 hour in seconds
 
 import Link from 'next/link';
 import Image from 'next/image';

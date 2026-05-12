@@ -23,11 +23,16 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
     title: {
-        default: 'SafariKannadiga | Premium Wildlife Safaris & Photo Tours',
-        template: '%s | SafariKannadiga',
+        default: 'Safari Kannadiga | Premium Africa Safari & Kenya Wildlife Photo Tours',
+        template: '%s | Safari Kannadiga',
     },
-    description: 'Experience unforgettable wildlife safaris and photography tours across Africa and Asia. Expert-led expeditions to Kenya, India, and beyond.',
-    keywords: ['safari', 'wildlife photography', 'kenya safari', 'india wildlife tour', 'masai mara', 'tiger safari', 'photography expedition'],
+    description: 'Book the best expert-led Africa safari tours, Kenya wildlife photography expeditions, and Indian tiger safaris. Experience unforgettable wildlife adventures with Safari Kannadiga.',
+    keywords: [
+        'africa safari', 'kenya safari', 'best africa safari tours', 'wildlife photography', 
+        'kenya safari booking', 'india wildlife tour', 'masai mara safari', 
+        'tanzania safari', 'tiger safari india', 'safari kannadiga',
+        'photography expedition', 'african wildlife tours'
+    ],
     authors: [{ name: 'SafariKannadiga' }],
     creator: 'SafariKannadiga',
     metadataBase: new URL('https://safarikannadiga.com'),
@@ -66,8 +71,33 @@ export default async function RootLayout({
 }) {
     const settings = await getGeneralSettings();
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'TravelAgency',
+        'name': 'Safari Kannadiga',
+        'description': 'Premium expert-led Africa Safari and Kenya Wildlife Photo Tours.',
+        'url': 'https://safarikannadiga.com',
+        'logo': 'https://safarikannadiga.com/images/logo.png',
+        'sameAs': [
+            'https://www.instagram.com/safarikannadiga',
+            'https://www.facebook.com/safarikannadiga'
+        ],
+        'aggregateRating': {
+            '@type': 'AggregateRating',
+            'ratingValue': '5.0',
+            'reviewCount': '4',
+            'bestRating': '5'
+        }
+    };
+
     return (
         <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+            <head>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+            </head>
             <body className="flex min-h-screen flex-col">
                 <Preloader />
                 <ImageProtectionProvider />
