@@ -14,6 +14,9 @@ interface Tour {
     highlights: string[];
 }
 
+// ISR: Revalidate every 1 hour to reduce Firestore reads
+export const revalidate = 3600; // 1 hour in seconds
+
 export default async function ToursPage() {
     const tours = getAllContent('tours') as unknown as Tour[];
 

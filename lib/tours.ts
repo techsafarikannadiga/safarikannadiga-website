@@ -1,35 +1,15 @@
 /**
  * Tours Management Module
  * =======================
- * 
+ *
  * Handles all CRUD operations for upcoming safari tours.
- * Uses Supabase for storage with ImageKit for images/brochures.
- * 
- * @author Samarth V (samarthv.me)
+ * Uses Firestore for metadata with ImageKit for images/brochures.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { FieldValue, Timestamp, getFirebaseDb } from './firebase-admin';
+import { isFirebaseConfigured } from './firebase-db';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-// Public client for reading
-let supabase: SupabaseClient | null = null;
-// Admin client for writing (bypasses RLS)
-let supabaseAdmin: SupabaseClient | null = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
-}
-
-if (supabaseUrl && supabaseServiceRoleKey) {
-    supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-    });
-}
-
-// Types
 export interface Tour {
     id: string;
     title: string;
@@ -63,178 +43,150 @@ export interface TourInput {
     featured?: boolean;
 }
 
-/**
- * Check if tours feature is available
- */
+function toIso(value: unknown): string {
+    if (!value) return new Date().toISOString();
+    if (value instanceof Timestamp) return value.toDate().toISOString();
+    if (value instanceof Date) return value.toISOString();
+    return String(value);
+}
+
+function normalizeTour(id: string, data: FirebaseFirestore.DocumentData): Tour {
+    return {
+        id,
+        title: data.title || '',
+        destination: data.destination || '',
+        start_date: data.start_date || '',
+        end_date: data.end_date || '',
+        spots_total: Number(data.spots_total || 0),
+        spots_left: Number(data.spots_left || 0),
+        image_url: data.image_url || null,
+        brochure_url: data.brochure_url || null,
+        highlights: Array.isArray(data.highlights) ? data.highlights : [],
+        description: data.description || null,
+        status: data.status || 'upcoming',
+        featured: data.featured ?? true,
+        created_at: toIso(data.created_at),
+        updated_at: toIso(data.updated_at),
+    };
+}
+
 export function isToursConfigured(): boolean {
-    return !!(supabaseUrl && supabaseAnonKey && supabase);
+    return isFirebaseConfigured();
 }
 
 /**
- * Get all tours (public)
+ * Internal base fetcher wrapped in persistent data cache
  */
+const fetchAllToursCached = unstable_cache(
+    async (): Promise<Tour[]> => {
+        if (!isFirebaseConfigured()) return [];
+        console.log('[Cache Miss] Fetching all tours from Firestore');
+        const snapshot = await getFirebaseDb().collection('upcoming_tours').get();
+        return snapshot.docs.map((doc) => normalizeTour(doc.id, doc.data()));
+    },
+    ['all-tours'],
+    {
+        revalidate: 3600,
+        tags: ['all-tours']
+    }
+);
+
 export async function getTours(options?: {
     status?: 'upcoming' | 'sold-out' | 'completed' | 'draft' | 'all';
     featured?: boolean;
     includeDrafts?: boolean;
 }): Promise<Tour[]> {
-    if (!supabase) return [];
-
-    let query = supabase
-        .from('upcoming_tours')
-        .select('*')
-        .order('start_date', { ascending: true });
+    let tours = await fetchAllToursCached();
 
     if (options?.status && options.status !== 'all') {
-        query = query.eq('status', options.status);
+        tours = tours.filter((tour) => tour.status === options.status);
     } else if (!options?.includeDrafts) {
-        // Hide drafts by default if not explicitly requested
-        query = query.neq('status', 'draft');
+        tours = tours.filter((tour) => tour.status !== 'draft');
     }
 
     if (options?.featured !== undefined) {
-        query = query.eq('featured', options.featured);
+        tours = tours.filter((tour) => tour.featured === options.featured);
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-        console.error('Error fetching tours:', error);
-        return [];
-    }
-
-    return data || [];
+    return [...tours].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
 }
 
-/**
- * Get a single tour by ID
- */
 export async function getTourById(id: string): Promise<Tour | null> {
-    if (!supabase) return null;
-
-    const { data, error } = await supabase
-        .from('upcoming_tours')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-    if (error) {
-        console.error('Error fetching tour:', error);
-        return null;
-    }
-
-    return data;
+    const tours = await fetchAllToursCached();
+    return tours.find(t => t.id === id) || null;
 }
 
-/**
- * Create a new tour (admin only)
- */
 export async function createTour(tour: TourInput): Promise<{ success: boolean; tour?: Tour; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
-
-    const { data, error } = await supabaseAdmin
-        .from('upcoming_tours')
-        .insert([{
+    try {
+        const ref = getFirebaseDb().collection('upcoming_tours').doc();
+        const payload = {
             ...tour,
             highlights: tour.highlights || [],
             status: tour.status || 'upcoming',
             featured: tour.featured ?? true,
-        }])
-        .select()
-        .single();
+            image_url: tour.image_url || null,
+            brochure_url: tour.brochure_url || null,
+            description: tour.description || null,
+            created_at: FieldValue.serverTimestamp(),
+            updated_at: FieldValue.serverTimestamp(),
+        };
 
-    if (error) {
+        await ref.set(payload);
+        revalidateTag('all-tours', 'max');
+        return { success: true, tour: normalizeTour(ref.id, { ...payload, created_at: new Date(), updated_at: new Date() }) };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to create tour';
         console.error('Error creating tour:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: message };
     }
-
-    return { success: true, tour: data };
 }
 
-/**
- * Update a tour (admin only)
- */
 export async function updateTour(id: string, updates: Partial<TourInput>): Promise<{ success: boolean; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
+    try {
+        await getFirebaseDb().collection('upcoming_tours').doc(id).set({
+            ...updates,
+            updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true });
 
-    const { error } = await supabaseAdmin
-        .from('upcoming_tours')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id);
-
-    if (error) {
+        revalidateTag('all-tours', 'max');
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update tour';
         console.error('Error updating tour:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: message };
     }
-
-    return { success: true };
 }
 
-/**
- * Mark a tour as completed (admin only)
- */
 export async function markTourCompleted(id: string): Promise<{ success: boolean; error?: string }> {
     return updateTour(id, { status: 'completed', spots_left: 0 });
 }
 
-/**
- * Mark a tour as sold out (admin only)
- */
 export async function markTourSoldOut(id: string): Promise<{ success: boolean; error?: string }> {
     return updateTour(id, { status: 'sold-out', spots_left: 0 });
 }
 
-/**
- * Delete a tour (admin only)
- */
 export async function deleteTour(id: string): Promise<{ success: boolean; error?: string }> {
-    if (!supabaseAdmin) return { success: false, error: 'Admin client not configured' };
-
-    const { error } = await supabaseAdmin
-        .from('upcoming_tours')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
+    try {
+        await getFirebaseDb().collection('upcoming_tours').doc(id).delete();
+        revalidateTag('all-tours', 'max');
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete tour';
         console.error('Error deleting tour:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: message };
     }
-
-    return { success: true };
 }
 
-/**
- * Get tours for homepage display (upcoming + featured)
- * Sorts: Upcoming/Sold-out (soonest first) -> Completed (most recent first)
- */
 export async function getFeaturedTours(): Promise<Tour[]> {
-    if (!supabase) return [];
+    const data = await getTours({ featured: true });
 
-    const { data, error } = await supabase
-        .from('upcoming_tours')
-        .select('*')
-        .eq('featured', true)
-        .neq('status', 'draft') // Never show drafts on homepage
-        .limit(20); // Increased limit to ensure we get enough tours
-
-    if (error) {
-        console.error('Error fetching featured tours:', error);
-        return [];
-    }
-
-    if (!data) return [];
-
-    // Custom sorting:
-    // 1. Upcoming & Sold Out tours (sorted by date ASC - soonest first)
-    // 2. Completed tours (sorted by date DESC - most recent first)
     const activeTours = data
-        .filter(t => t.status !== 'completed')
+        .filter((tour) => tour.status !== 'completed')
         .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
 
     const completedTours = data
-        .filter(t => t.status === 'completed')
+        .filter((tour) => tour.status === 'completed')
         .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
-    // Combine and take top 8 (or however many you want to show)
     return [...activeTours, ...completedTours];
 }

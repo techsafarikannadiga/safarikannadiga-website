@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getVisitCount, incrementVisitCount } from '@/lib/supabase';
+import { getVisitCount, incrementVisitCount } from '@/lib/firebase-db';
 
 export const dynamic = 'force-dynamic'; // Ensure it's not cached static
 

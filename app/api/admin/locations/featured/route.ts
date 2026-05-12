@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { toggleLocationFeatured } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
+import { toggleLocationFeatured } from '@/lib/firebase-db';
+import { recordAuditTrail } from '@/lib/audit';
 
 /**
  * Toggle featured status of a gallery location
@@ -23,6 +25,10 @@ export async function PATCH(request: Request) {
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
+
+        revalidatePath('/', 'layout');
+        revalidatePath('/gallery', 'layout');
+        await recordAuditTrail('UPDATE', 'GALLERY', locationId, { isFeatured });
 
         return NextResponse.json({ success: true, isFeatured });
     } catch (error) {

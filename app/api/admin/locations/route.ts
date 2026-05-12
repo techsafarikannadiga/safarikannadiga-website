@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import {
     addLocation,
     deleteLocation,
     updateLocation,
     getContinentsList
 } from '@/lib/gallery-cloud';
+import { recordAuditTrail } from '@/lib/audit';
 
 // GET: List continents
 export async function GET() {
@@ -34,6 +36,13 @@ export async function POST(req: Request) {
         });
 
         if (result.success) {
+            revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('CREATE', 'GALLERY', result.location?.id || `${continentSlug}-${name}`, {
+                continentSlug,
+                name,
+                country,
+            });
             return NextResponse.json({ success: true, location: result.location });
         } else {
             return NextResponse.json({ error: result.error }, { status: 400 });
@@ -56,6 +65,12 @@ export async function DELETE(req: Request) {
         const result = await deleteLocation(continentSlug, locationSlug);
 
         if (result.success) {
+            revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('DELETE', 'GALLERY', `${continentSlug}-${locationSlug}`, {
+                continentSlug,
+                locationSlug,
+            });
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 404 });
@@ -91,6 +106,9 @@ export async function PATCH(req: Request) {
         const result = await updateLocation(continentSlug, locationSlug, updates);
 
         if (result.success) {
+            revalidatePath('/', 'layout');
+            revalidatePath('/gallery', 'layout');
+            await recordAuditTrail('UPDATE', 'GALLERY', `${continentSlug}-${locationSlug}`, updates);
             return NextResponse.json({ success: true });
         } else {
             return NextResponse.json({ error: result.error }, { status: 400 });

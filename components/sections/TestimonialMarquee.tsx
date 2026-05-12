@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Testimonial } from '@/lib/testimonials';
+import { formatVisitDate } from '@/lib/utils/date';
+import { Avatar } from '@/components/ui/Avatar';
 
 interface TestimonialMarqueeProps {
     testimonials: Testimonial[];
@@ -63,13 +65,12 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
 
                 {/* Author */}
                 <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-safari-gold to-sunset-orange flex items-center justify-center font-bold text-white text-sm overflow-hidden relative shrink-0">
-                        {testimonial.avatar_url ? (
-                            <Image src={testimonial.avatar_url} alt={testimonial.name} fill className="object-cover" sizes="40px" />
-                        ) : (
-                            testimonial.name.charAt(0).toUpperCase()
-                        )}
-                    </div>
+                    <Avatar
+                        src={testimonial.avatar_url}
+                        name={testimonial.name}
+                        sizeClasses="w-10 h-10"
+                        textSizeClasses="text-sm"
+                    />
                     <div className="min-w-0">
                         <h4 className="font-semibold text-sm text-neutral-charcoal truncate flex items-center gap-1.5">
                             {testimonial.name}
@@ -77,7 +78,7 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
                         </h4>
                         <p className="text-neutral-gray text-xs truncate">
                             {testimonial.safari}
-                            {testimonial.visit_date && ` • ${new Date(testimonial.visit_date + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                            {testimonial.visit_date && ` • ${formatVisitDate(testimonial.visit_date)}`}
                         </p>
                     </div>
                 </div>

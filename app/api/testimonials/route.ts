@@ -15,7 +15,13 @@ export async function GET(req: Request) {
 
         const testimonials = await getApprovedTestimonials(limit ? parseInt(limit) : undefined);
 
-        return NextResponse.json(testimonials);
+        // Cache response for 1 hour to reduce Firestore reads
+        const response = NextResponse.json(testimonials);
+        response.headers.set(
+            'Cache-Control',
+            'public, s-maxage=3600, stale-while-revalidate=86400'
+        );
+        return response;
     } catch (error) {
         console.error('Testimonials Fetch Error:', error);
         return NextResponse.json({ error: 'Failed to fetch testimonials' }, { status: 500 });
