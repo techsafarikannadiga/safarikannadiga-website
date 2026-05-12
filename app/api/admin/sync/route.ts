@@ -10,7 +10,7 @@ export async function POST() {
         ]);
 
         // Invalidate testimonials cache so user sees new reviews instantly on frontend
-        revalidateTag('testimonials');
+        revalidateTag('testimonials', 'max');
 
         return NextResponse.json({
             success: true,
