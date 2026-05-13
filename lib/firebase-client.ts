@@ -31,8 +31,8 @@ export function initializeFirebaseClient() {
         app = initializeApp(config);
         auth = getAuth(app);
 
-        // Use emulator in development if available
-        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+        // Use emulator in development only if explicitly requested via env (disabled by default for live testing)
+        if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' && typeof window !== 'undefined') {
             try {
                 connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
             } catch (error) {

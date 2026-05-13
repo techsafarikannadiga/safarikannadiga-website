@@ -8,8 +8,9 @@ import { GalleryManager, GalleryContinent } from '@/components/admin/GalleryMana
 import { ActionOverlay } from '@/components/admin/ActionOverlay';
 import { AdminErrorBoundary } from '@/components/admin/AdminErrorBoundary';
 import { signInWithGoogle } from '@/lib/firebase-client';
+import { AdminsAdmin } from '@/components/admin/AdminsAdmin';
 
-type MainTab = 'gallery' | 'tours' | 'testimonials';
+type MainTab = 'gallery' | 'tours' | 'testimonials' | 'admins';
 
 export default function AdminPage() {
     // Auth state
@@ -206,7 +207,8 @@ export default function AdminPage() {
                     {[
                         { id: 'gallery', label: 'Gallery', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
                         { id: 'tours', label: 'Tours', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                        { id: 'testimonials', label: 'Testimonials', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' }
+                        { id: 'testimonials', label: 'Testimonials', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
+                        { id: 'admins', label: 'Admins', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -243,6 +245,7 @@ export default function AdminPage() {
                                 )}
                                 {activeMainTab === 'tours' && <ToursAdmin />}
                                 {activeMainTab === 'testimonials' && <TestimonialsAdmin />}
+                                {activeMainTab === 'admins' && <AdminsAdmin currentEmail={adminEmail} />}
                             </>
                         )}
                     </div>

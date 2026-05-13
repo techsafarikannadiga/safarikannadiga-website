@@ -4,14 +4,7 @@ import {
     setAdminSessionCookie,
     clearAdminSessionCookies,
 } from '@/lib/firebase-auth';
-import { getFirebaseAdminAuth } from '@/lib/firebase-admin';
-
-// List of admin email addresses that can access the admin panel
-const ADMIN_EMAILS = [
-    'samarthv080@gmail.com',
-    'dev.samarthv@gmail.com',
-    'safarikannadiga@gmail.com',
-];
+import { getFirebaseAdminAuth, getFirebaseDb } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
     try {
@@ -29,8 +22,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Email not found in token' }, { status: 400 });
         }
 
-        // Check if user email is in admin list
-        if (!ADMIN_EMAILS.includes(userEmail)) {
+        // Check if user email is in Firestore whitelist collection
+        const normalizedEmail = userEmail.toLowerCase();
+        const adminDocRef = getFirebaseDb().collection('admins').doc(normalizedEmail);
+        const adminSnapshot = await adminDocRef.get();
+
+        if (!adminSnapshot.exists) {
             console.warn(`Unauthorized admin access attempt from: ${userEmail}`);
             return NextResponse.json(
                 { error: 'You do not have permission to access the admin panel' },
