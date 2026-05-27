@@ -44,6 +44,7 @@ import {
 import {
     isImageKitConfigured,
     listFiles,
+    listFilesRecursive,
     uploadFile,
     deleteFile,
     deleteFolder,
@@ -366,106 +367,120 @@ const fetchContinentsRawCached = unstable_cache(
     async (): Promise<GalleryContinent[]> => {
         console.log('[Cache Miss] Fetching gallery continents data');
         const config = await getGalleryConfig();
-    const savedCovers = await getGalleryCovers();
+        const savedCovers = await getGalleryCovers();
+        const allGalleryFiles = await listFilesRecursive(GALLERY_ROOT);
 
-    const continents = await Promise.all(config.continents.map(async (continent: any) => {
-        let totalImages = 0;
-        let continentCoverFromLocation = '';
+        const continents = config.continents.map((continent: any) => {
+            let totalImages = 0;
+            let continentCoverFromLocation = '';
 
-        // Parallelize image fetching for ALL locations in this continent simultaneously
-        const locationsWithCounts = await Promise.all(continent.locations.map(async (loc: any) => {
-            const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
-            const images = await getImageKitImages(folderPath);
-            
-            // Add to our local count tracking safely
-            // (we track totalImages below to avoid concurrency conflicts if needed, 
-            // but counting length is local anyway)
-            
-            const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
-            const savedCoverData = savedCovers[coverKey];
-            const savedCover = savedCoverData?.cover_url;
-            const isUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
+            const locationsWithCounts = continent.locations.map((loc: any) => {
+                const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
+                
+                // Ensure proper leading/trailing slashes for prefix match
+                let prefix = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+                if (!prefix.endsWith('/')) {
+                    prefix = `${prefix}/`;
+                }
 
-            let coverImage = '/images/placeholder-safari.jpg';
+                // Filter files under this folder prefix in memory
+                const matchingFiles = allGalleryFiles.filter(file => file.filePath.startsWith(prefix));
 
-            const matchingImage = savedCover ? images.find(img =>
-                normalizeUrl(img.src) === normalizeUrl(savedCover) ||
-                img.publicId === savedCover ||
-                img.filename === savedCover
-            ) : null;
+                const images: GalleryImage[] = matchingFiles.map(file => ({
+                    src: file.url,
+                    filename: file.name,
+                    alt: file.name.replace(/[-_]/g, ' ').replace(/\.\w+$/, '') || 'Safari photo',
+                    publicId: file.fileId,
+                }));
+                
+                const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
+                const savedCoverData = savedCovers[coverKey];
+                const savedCover = savedCoverData?.cover_url;
+                const isUrl = savedCover && (savedCover.startsWith('http://') || savedCover.startsWith('https://'));
 
-            if (matchingImage) {
-                coverImage = matchingImage.src;
-            } else if (isUrl) {
-                coverImage = savedCover;
-            } else if (images.length > 0) {
-                coverImage = images[0].src;
-            }
+                let coverImage = '/images/placeholder-safari.jpg';
 
-            return {
-                ...loc,
-                coverImage,
-                imageCount: images.length,
-                imagesList: images, // store temporarily for reuse below to avoid secondary fetch
-                focalX: savedCoverData?.focal_x ?? 50,
-                focalY: savedCoverData?.focal_y ?? 50,
-                zoom: savedCoverData?.zoom ?? 1.0,
-                isFeatured: loc.is_featured ?? false,
-                featuredOrder: loc.featured_order ?? 0,
-            };
-        }));
+                const matchingImage = savedCover ? images.find(img =>
+                    normalizeUrl(img.src) === normalizeUrl(savedCover) ||
+                    img.publicId === savedCover ||
+                    img.filename === savedCover
+                ) : null;
 
-        // Post-process totals and covers using pre-loaded data (CPU bound, no awaits)
-        for (const loc of locationsWithCounts) {
-            totalImages += loc.imageCount;
-            if (!continentCoverFromLocation && loc.imageCount > 0) {
-                continentCoverFromLocation = loc.coverImage;
-            }
-        }
+                if (matchingImage) {
+                    coverImage = matchingImage.src;
+                } else if (isUrl) {
+                    coverImage = savedCover;
+                } else if (images.length > 0) {
+                    coverImage = images[0].src;
+                }
 
-        const continentKey = continent.name.toLowerCase().trim();
-        const savedContinentCover = savedCovers[continentKey];
+                return {
+                    ...loc,
+                    coverImage,
+                    imageCount: images.length,
+                    imagesList: images, // store temporarily for reuse below to avoid secondary fetch
+                    focalX: savedCoverData?.focal_x ?? 50,
+                    focalY: savedCoverData?.focal_y ?? 50,
+                    zoom: savedCoverData?.zoom ?? 1.0,
+                    isFeatured: loc.is_featured ?? false,
+                    featuredOrder: loc.featured_order ?? 0,
+                };
+            });
 
-        let continentCover = '/images/placeholder-safari.jpg';
-
-        if (savedContinentCover) {
-            let matchedUrl = '';
-            // Leverage preloaded image lists, NO network calls inside this loop now!
+            // Post-process totals and covers using pre-loaded data (CPU bound, no awaits)
             for (const loc of locationsWithCounts) {
-                const match = loc.imagesList.find((img: any) =>
-                    normalizeUrl(img.src) === normalizeUrl(savedContinentCover.cover_url) ||
-                    img.publicId === savedContinentCover.cover_url ||
-                    img.filename === savedContinentCover.cover_url
-                );
-                if (match) {
-                    matchedUrl = match.src;
-                    break;
+                totalImages += loc.imageCount;
+                if (!continentCoverFromLocation && loc.imageCount > 0) {
+                    continentCoverFromLocation = loc.coverImage;
                 }
             }
-            continentCover = matchedUrl || (savedContinentCover.cover_url.startsWith('http') ? savedContinentCover.cover_url : continentCover);
-        } else if (continentCoverFromLocation) {
-            continentCover = continentCoverFromLocation;
-        } else if (continent.coverImage) {
-            continentCover = continent.coverImage;
-        }
 
-        // Strip temporary preloaded images from final object returned to user
-        const cleanLocations = locationsWithCounts.map(({ imagesList, ...cleanLoc }) => cleanLoc);
+            const continentKey = continent.name.toLowerCase().trim();
+            const savedContinentCover = savedCovers[continentKey];
 
-        return {
-            id: continent.id,
-            name: continent.name,
-            slug: continent.slug,
-            description: continent.description,
-            coverImage: continentCover,
-            locations: cleanLocations,
-            locationCount: continent.locations.length,
-            totalImages
-        };
-    }));
+            let continentCover = '/images/placeholder-safari.jpg';
 
-    return continents;
-}, ['gallery-continents'], { revalidate: 3600, tags: ['gallery'] });
+            if (savedContinentCover) {
+                let matchedUrl = '';
+                // Leverage preloaded image lists, NO network calls inside this loop now!
+                for (const loc of locationsWithCounts) {
+                    const match = loc.imagesList.find((img: any) =>
+                        normalizeUrl(img.src) === normalizeUrl(savedContinentCover.cover_url) ||
+                        img.publicId === savedContinentCover.cover_url ||
+                        img.filename === savedContinentCover.cover_url
+                    );
+                    if (match) {
+                        matchedUrl = match.src;
+                        break;
+                    }
+                }
+                continentCover = matchedUrl || (savedContinentCover.cover_url.startsWith('http') ? savedContinentCover.cover_url : continentCover);
+            } else if (continentCoverFromLocation) {
+                continentCover = continentCoverFromLocation;
+            } else if (continent.coverImage) {
+                continentCover = continent.coverImage;
+            }
+
+            // Strip temporary preloaded images from final object returned to user
+            const cleanLocations = locationsWithCounts.map(({ imagesList, ...cleanLoc }: any) => cleanLoc);
+
+            return {
+                id: continent.id,
+                name: continent.name,
+                slug: continent.slug,
+                description: continent.description,
+                coverImage: continentCover,
+                locations: cleanLocations,
+                locationCount: continent.locations.length,
+                totalImages
+            };
+        });
+
+        return continents;
+    },
+    ['gallery-continents'],
+    { revalidate: 3600, tags: ['gallery'] }
+);
 
 export async function getContinents(): Promise<GalleryContinent[]> {
     return fetchContinentsRawCached();
@@ -530,13 +545,30 @@ export async function getImages(continentSlug: string, locationSlug: string): Pr
 export async function getFullGalleryStructure() {
     const config = await getGalleryConfig();
     const savedCovers = await getGalleryCovers();
+    const allGalleryFiles = await listFilesRecursive(GALLERY_ROOT);
 
-    return await Promise.all(config.continents.map(async (continent: any) => ({
+    return config.continents.map((continent: any) => ({
         name: continent.name,
         slug: continent.slug,
-        locations: await Promise.all(continent.locations.map(async (loc: any) => {
+        locations: continent.locations.map((loc: any) => {
             const folderPath = getLocationFolderPath(continent.name, loc.name, loc.country);
-            const images = await getImageKitImages(folderPath);
+            
+            // Ensure proper leading/trailing slashes for prefix match
+            let prefix = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+            if (!prefix.endsWith('/')) {
+                prefix = `${prefix}/`;
+            }
+
+            // Filter files under this folder prefix in memory
+            const matchingFiles = allGalleryFiles.filter(file => file.filePath.startsWith(prefix));
+
+            const images = matchingFiles.map(file => ({
+                src: file.url,
+                filename: file.name,
+                alt: file.name.replace(/[-_]/g, ' ').replace(/\.\w+$/, '') || 'Safari photo',
+                publicId: file.fileId,
+            }));
+
             const coverKey = `${continent.name}/${loc.name}`.toLowerCase().trim();
             const savedCoverData = savedCovers[coverKey];
             const savedCover = savedCoverData?.cover_url;
@@ -581,8 +613,8 @@ export async function getFullGalleryStructure() {
                     isContinentCover: savedContinentCover ? (normalizeUrl(img.src) === normalizeUrl(savedContinentCover) || img.publicId === savedContinentCover) : false
                 }))
             };
-        }))
-    })));
+        })
+    }));
 }
 
 /**

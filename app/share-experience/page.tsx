@@ -54,7 +54,8 @@ export default function ShareExperiencePage() {
     const optimizePhotoForUpload = async (file: File): Promise<File> => {
         if (!file.type.startsWith('image/')) return file;
 
-        if (file.size <= 2 * 1024 * 1024) {
+        // Optimize any image larger than 200KB to stay within serverless payload limits (4.5MB on Vercel, 6MB on Netlify)
+        if (file.size <= 200 * 1024) {
             return file;
         }
 

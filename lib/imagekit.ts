@@ -390,4 +390,45 @@ export async function deleteFolder(folderPath: string): Promise<{ success: boole
 
 
 
+/**
+ * List all files in the account recursively and filter by folder path prefix in memory
+ */
+export async function listFilesRecursive(folderPath: string): Promise<ImageKitFile[]> {
+    if (!isImageKitConfigured()) {
+        console.warn('ImageKit not configured');
+        return [];
+    }
+
+    try {
+        // Fetch all files in the account recursively in one call
+        // Limit is set to 1000 (ImageKit's maximum per page)
+        const response: any = await imagekit.assets.list({
+            limit: 1000,
+        });
+
+        // Ensure folder path starts with / and ends with /
+        let prefix = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+        if (!prefix.endsWith('/')) {
+            prefix = `${prefix}/`;
+        }
+
+        // Filter to only include files that start with the prefix
+        return response
+            .filter((item: any) => item.type === 'file' && item.filePath.startsWith(prefix))
+            .map((file: any) => ({
+                fileId: file.fileId,
+                name: file.name,
+                filePath: file.filePath,
+                url: file.url,
+                thumbnailUrl: file.thumbnail || file.url,
+                width: file.width,
+                height: file.height,
+                size: file.size,
+            }));
+    } catch (error: any) {
+        console.error(`Error listing files recursively from ${folderPath}:`, error);
+        return [];
+    }
+}
+
 export default imagekit;
