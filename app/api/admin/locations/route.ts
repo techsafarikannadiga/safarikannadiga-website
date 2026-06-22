@@ -7,9 +7,15 @@ import {
     getContinentsList
 } from '@/lib/gallery-cloud';
 import { recordAuditTrail } from '@/lib/audit';
+import { getAuthenticatedUser } from '@/lib/firebase-auth';
 
 // GET: List continents
 export async function GET() {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const continents = await getContinentsList();
         return NextResponse.json(continents);
@@ -21,6 +27,11 @@ export async function GET() {
 
 // POST: Add new location
 export async function POST(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { continentSlug, name, country, description, wildlife } = await req.json();
 
@@ -55,6 +66,11 @@ export async function POST(req: Request) {
 
 // DELETE: Delete location
 export async function DELETE(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { continentSlug, locationSlug } = await req.json();
 
@@ -83,6 +99,11 @@ export async function DELETE(req: Request) {
 
 // PATCH: Update location details (description, wildlife, country)
 export async function PATCH(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { continentSlug, locationSlug, description, wildlife, country, coverImage, focalX, focalY, zoom } = await req.json();
 

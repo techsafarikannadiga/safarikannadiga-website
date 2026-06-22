@@ -8,11 +8,17 @@ import {
 } from '@/lib/gallery-cloud';
 import { getLocationFolderPath } from '@/lib/imagekit';
 import { recordAuditTrail } from '@/lib/audit';
+import { getAuthenticatedUser } from '@/lib/firebase-auth';
 
 export const maxDuration = 60;
 
 // GET: List Full Structure
 export async function GET() {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const structure = await getFullGalleryStructure();
         return NextResponse.json(structure);
@@ -24,6 +30,11 @@ export async function GET() {
 
 // POST: Upload Image
 export async function POST(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
@@ -59,6 +70,11 @@ export async function POST(req: Request) {
 
 // DELETE: Delete Image
 export async function DELETE(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { imagePath } = await req.json();
 
@@ -83,6 +99,11 @@ export async function DELETE(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { continent, location, imagePath, focalPoint } = await req.json();
 

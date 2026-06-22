@@ -11,9 +11,15 @@ import {
 } from '@/lib/tours';
 import { saveImage } from '@/lib/gallery-cloud';
 import { recordAuditTrail } from '@/lib/audit';
+import { getAuthenticatedUser } from '@/lib/firebase-auth';
 
 // GET: List all tours
 export async function GET(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { searchParams } = new URL(req.url);
         const status = searchParams.get('status') as 'upcoming' | 'sold-out' | 'completed' | 'draft' | 'all' | null;
@@ -34,6 +40,11 @@ export async function GET(req: Request) {
 
 // POST: Create a new tour
 export async function POST(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const formData = await req.formData();
 
@@ -87,6 +98,11 @@ export async function POST(req: Request) {
 
 // PUT: Update a tour
 export async function PUT(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const formData = await req.formData();
         const id = formData.get('id') as string;
@@ -137,6 +153,11 @@ export async function PUT(req: Request) {
 
 // PATCH: Update tour status
 export async function PATCH(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { id, action } = await req.json();
 
@@ -175,6 +196,11 @@ export async function PATCH(req: Request) {
 
 // DELETE: Delete a tour
 export async function DELETE(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { id } = await req.json();
 

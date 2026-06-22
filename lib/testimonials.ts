@@ -172,12 +172,19 @@ async function uploadTestimonialPhotos(files: File[]): Promise<string[]> {
 
 export async function createTestimonial(
     data: TestimonialInput,
-    photos?: File[]
+    photos?: File[] | string[]
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
         if (!isFirebaseConfigured()) return { success: false, error: 'Database not configured' };
 
-        const photoUrls = photos?.length ? await uploadTestimonialPhotos(photos) : [];
+        let photoUrls: string[] = [];
+        if (photos && photos.length > 0) {
+            if (typeof photos[0] === 'string') {
+                photoUrls = photos as string[];
+            } else {
+                photoUrls = await uploadTestimonialPhotos(photos as File[]);
+            }
+        }
         const docId = testimonialDocId(data);
         const ref = docId
             ? getFirebaseDb().collection('testimonials').doc(docId)

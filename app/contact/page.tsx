@@ -108,35 +108,50 @@ function ContactFormContent() {
                     {/* Honeypot field for anti-spam */}
                     <input
                         type="text"
-                        {...register("website")}
+                        {...register("custom_spam_trap_website_null")}
                         style={{ display: 'none' }}
                         tabIndex={-1}
                         autoComplete="off"
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">First Name</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">First Name *</label>
                             <input
-                                {...register("firstName", { required: true })}
+                                {...register("firstName", { required: "First name is required" })}
                                 className={cn("w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all", errors.firstName ? "border-red-400" : "border-transparent focus:border-safari-gold")}
                             />
+                            {errors.firstName && (
+                                <p className="text-red-500 text-xs mt-1">{(errors.firstName.message as string)}</p>
+                            )}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Last Name</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Last Name *</label>
                             <input
-                                {...register("lastName", { required: true })}
+                                {...register("lastName", { required: "Last name is required" })}
                                 className={cn("w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all", errors.lastName ? "border-red-400" : "border-transparent focus:border-safari-gold")}
                             />
+                            {errors.lastName && (
+                                <p className="text-red-500 text-xs mt-1">{(errors.lastName.message as string)}</p>
+                            )}
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Email Address</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Email Address *</label>
                         <input
                             type="email"
-                            {...register("email", { required: true })}
+                            {...register("email", { 
+                                required: "Email is required",
+                                pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: "Invalid email address"
+                                }
+                            })}
                             className={cn("w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all", errors.email ? "border-red-400" : "border-transparent focus:border-safari-gold")}
                         />
+                        {errors.email && (
+                            <p className="text-red-500 text-xs mt-1">{(errors.email.message as string)}</p>
+                        )}
                     </div>
 
                     <div>
@@ -153,13 +168,16 @@ function ContactFormContent() {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Message</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">Message *</label>
                         <textarea
                             rows={4}
-                            {...register("message", { required: true })}
+                            {...register("message", { required: "Message is required" })}
                             className={cn("w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all resize-none", errors.message ? "border-red-400" : "border-transparent focus:border-safari-gold")}
                             placeholder="Tell us about your dream safari..."
                         />
+                        {errors.message && (
+                            <p className="text-red-500 text-xs mt-1">{(errors.message.message as string)}</p>
+                        )}
                     </div>
 
                     <div className="space-y-4">

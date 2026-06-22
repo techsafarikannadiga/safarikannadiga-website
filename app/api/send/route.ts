@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // Anti-spam Honeypot Check
-        if (body.website) {
+        if (body.custom_spam_trap_website_null) {
             // Silently succeed for bots
             return NextResponse.json({ success: true, message: 'Message sent successfully' });
         }

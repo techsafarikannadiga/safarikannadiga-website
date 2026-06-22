@@ -194,7 +194,7 @@ export function GalleryManager({ structure: initialStructure, fetchStructure, se
 
                 // Construct the folder path (safari-gallery/Continent/Country/Location)
                 // We need to sanitize similarly to backend
-                const sanitize = (s: string) => s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '');
+                const sanitize = (s: string) => s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').replace(/-+/g, '-');
 
                 let folderPath = `safari-gallery/${sanitize(activeContinentName)}`;
                 if (activeLocation && activeLocation.country) {

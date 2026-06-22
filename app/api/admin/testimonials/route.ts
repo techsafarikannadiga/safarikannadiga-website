@@ -7,9 +7,15 @@ import {
     deleteTestimonial
 } from '@/lib/testimonials';
 import { recordAuditTrail } from '@/lib/audit';
+import { getAuthenticatedUser } from '@/lib/firebase-auth';
 
 // GET: List all testimonials (admin)
 export async function GET() {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const testimonials = await getAllTestimonials();
         return NextResponse.json(testimonials);
@@ -21,6 +27,11 @@ export async function GET() {
 
 // PATCH: Approve/unapprove testimonial
 export async function PATCH(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { id, approved } = await req.json();
 
@@ -47,6 +58,11 @@ export async function PATCH(req: Request) {
 
 // DELETE: Delete testimonial
 export async function DELETE(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { id } = await req.json();
 
@@ -73,6 +89,11 @@ export async function DELETE(req: Request) {
 import { createTestimonial } from '@/lib/testimonials';
 
 export async function POST(req: Request) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body = await req.json();
 

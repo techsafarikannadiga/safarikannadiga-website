@@ -31,19 +31,68 @@ export async function GET(req: Request) {
 // POST: Submit a new testimonial (public)
 export async function POST(req: Request) {
     try {
-        let formData: FormData;
-        try {
-            formData = await req.formData();
-        } catch (error) {
-            console.error('Testimonial FormData Parse Error:', error);
-            return NextResponse.json(
-                { error: 'Upload payload too large. Please upload smaller photos and try again.' },
-                { status: 413 }
-            );
+        const contentType = req.headers.get('content-type') || '';
+        
+        let data: TestimonialInput;
+        let photos: File[] | string[] = [];
+        let customSpamTrap: string | null = null;
+
+        if (contentType.includes('application/json')) {
+            const body = await req.json();
+            customSpamTrap = body.custom_spam_trap_website_null || null;
+            data = {
+                name: body.name,
+                email: body.email,
+                safari: body.safari,
+                visit_date: body.visit_date || undefined,
+                rating: parseInt(body.rating) || 5,
+                story: body.story,
+                highlights: body.highlights || undefined,
+            };
+            photos = Array.isArray(body.photos) ? body.photos : [];
+        } else {
+            // Fallback for multipart form-data
+            let formData: FormData;
+            try {
+                formData = await req.formData();
+            } catch (error) {
+                console.error('Testimonial FormData Parse Error:', error);
+                return NextResponse.json(
+                    { error: 'Upload payload too large. Please upload smaller photos and try again.' },
+                    { status: 413 }
+                );
+            }
+
+            customSpamTrap = formData.get('custom_spam_trap_website_null') as string | null;
+            data = {
+                name: formData.get('name') as string,
+                email: formData.get('email') as string,
+                safari: formData.get('safari') as string,
+                visit_date: formData.get('visit_date') as string || undefined,
+                rating: parseInt(formData.get('rating') as string) || 5,
+                story: formData.get('story') as string,
+                highlights: formData.get('highlights') as string || undefined,
+            };
+
+            // Extract photos (max 5)
+            const filePhotos: File[] = [];
+            for (let i = 0; i < MAX_PHOTOS; i++) {
+                const photo = formData.get(`photo_${i}`) as File | null;
+                if (photo && photo.size > 0) {
+                    filePhotos.push(photo);
+                }
+            }
+
+            // Also check for 'photos' field (array upload)
+            const photosField = formData.getAll('photos') as File[];
+            if (photosField.length > 0) {
+                filePhotos.push(...photosField.slice(0, MAX_PHOTOS - filePhotos.length));
+            }
+            photos = filePhotos;
         }
 
         // Anti-spam Honeypot Check
-        if (formData.get('website')) {
+        if (customSpamTrap) {
             // Silently succeed for bots
             return NextResponse.json({
                 success: true,
@@ -51,17 +100,6 @@ export async function POST(req: Request) {
                 message: 'Thank you for sharing your experience! Your testimonial will be reviewed and published soon.'
             });
         }
-
-        // Extract testimonial data
-        const data: TestimonialInput = {
-            name: formData.get('name') as string,
-            email: formData.get('email') as string,
-            safari: formData.get('safari') as string,
-            visit_date: formData.get('visit_date') as string || undefined,
-            rating: parseInt(formData.get('rating') as string) || 5,
-            story: formData.get('story') as string,
-            highlights: formData.get('highlights') as string || undefined,
-        };
 
         // Validate required fields
         if (!data.name || !data.email || !data.safari || !data.story) {
@@ -73,47 +111,36 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
         }
 
-        // Extract photos (max 5)
-        const photos: File[] = [];
-        for (let i = 0; i < MAX_PHOTOS; i++) {
-            const photo = formData.get(`photo_${i}`) as File | null;
-            if (photo && photo.size > 0) {
-                photos.push(photo);
-            }
-        }
-
-        // Also check for 'photos' field (array upload)
-        const photosField = formData.getAll('photos') as File[];
-        if (photosField.length > 0) {
-            photos.push(...photosField.slice(0, MAX_PHOTOS - photos.length));
-        }
-
         // Limit to 5 photos
         if (photos.length > MAX_PHOTOS) {
             return NextResponse.json({ error: 'Maximum 5 photos allowed' }, { status: 400 });
         }
 
-        let totalUploadBytes = 0;
-        for (const photo of photos) {
-            if (!photo.type.startsWith('image/')) {
-                return NextResponse.json({ error: `Invalid file type: ${photo.name}` }, { status: 400 });
+        // If files, validate size and type
+        if (photos.length > 0 && typeof photos[0] !== 'string') {
+            const filePhotos = photos as File[];
+            let totalUploadBytes = 0;
+            for (const photo of filePhotos) {
+                if (!photo.type.startsWith('image/')) {
+                    return NextResponse.json({ error: `Invalid file type: ${photo.name}` }, { status: 400 });
+                }
+
+                if (photo.size > MAX_FILE_SIZE_BYTES) {
+                    return NextResponse.json(
+                        { error: `${photo.name} is too large. Maximum allowed size is 10MB per photo.` },
+                        { status: 400 }
+                    );
+                }
+
+                totalUploadBytes += photo.size;
             }
 
-            if (photo.size > MAX_FILE_SIZE_BYTES) {
+            if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
                 return NextResponse.json(
-                    { error: `${photo.name} is too large. Maximum allowed size is 10MB per photo.` },
+                    { error: 'Total photo upload size is too large. Please keep all selected photos within the allowed limits.' },
                     { status: 400 }
                 );
             }
-
-            totalUploadBytes += photo.size;
-        }
-
-        if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
-            return NextResponse.json(
-                { error: 'Total photo upload size is too large. Please keep all selected photos within the allowed limits.' },
-                { status: 400 }
-            );
         }
 
         const result = await createTestimonial(data, photos);

@@ -16,7 +16,7 @@ interface ExperienceFormData {
     highlights: string;
     story: string;
     consent: boolean;
-    website?: string; // Honeypot field
+    custom_spam_trap_website_null?: string; // Honeypot field
 }
 
 export default function ShareExperiencePage() {
@@ -54,8 +54,8 @@ export default function ShareExperiencePage() {
     const optimizePhotoForUpload = async (file: File): Promise<File> => {
         if (!file.type.startsWith('image/')) return file;
 
-        // Optimize any image larger than 200KB to stay within serverless payload limits (4.5MB on Vercel, 6MB on Netlify)
-        if (file.size <= 200 * 1024) {
+        // Optimize any image larger than 1MB to stay within reasonable client bandwidth limits
+        if (file.size <= 1024 * 1024) {
             return file;
         }
 
@@ -70,7 +70,7 @@ export default function ShareExperiencePage() {
                 const canvas = document.createElement('canvas');
                 let width = image.width;
                 let height = image.height;
-                const MAX_SIZE = 2400;
+                const MAX_SIZE = 3840; // Scaled to 4K max dimensions for crisp wildlife details
 
                 if (width > height && width > MAX_SIZE) {
                     height = Math.round((height * MAX_SIZE) / width);
@@ -106,7 +106,7 @@ export default function ShareExperiencePage() {
                     );
 
                     resolve(optimized);
-                }, 'image/jpeg', 0.82);
+                }, 'image/jpeg', 0.90); // 90% quality JPEG output
             };
 
             image.onerror = () => {
@@ -161,35 +161,71 @@ export default function ShareExperiencePage() {
         setUploadProgress('Preparing submission...');
 
         try {
-            const formData = new FormData();
-            formData.append('name', data.name);
-            formData.append('email', data.email);
-            formData.append('safari', data.safari);
-            formData.append('visit_date', data.visitDate || '');
-            formData.append('rating', rating.toString());
-            formData.append('story', data.story);
-            formData.append('highlights', data.highlights || '');
+            const uploadedUrls: string[] = [];
 
-            // Add photos
+            // Add photos directly to ImageKit from client
             if (selectedPhotos.length > 0) {
-                const optimizedPhotos: File[] = [];
-
                 for (let i = 0; i < selectedPhotos.length; i++) {
                     const photo = selectedPhotos[i];
                     setUploadProgress(`Optimizing photo ${i + 1}/${selectedPhotos.length}...`);
                     const optimized = await optimizePhotoForUpload(photo);
-                    optimizedPhotos.push(optimized);
-                }
 
-                setUploadProgress(`Uploading ${optimizedPhotos.length} photo(s)...`);
-                optimizedPhotos.forEach((photo, i) => {
-                    formData.append(`photo_${i}`, photo);
-                });
+                    setUploadProgress(`Uploading photo ${i + 1}/${selectedPhotos.length}: ${photo.name}...`);
+                    
+                    // 1. Get Authentication Parameters from our backend
+                    const authRes = await fetch('/api/testimonials/upload-auth');
+                    const authData = await authRes.json();
+
+                    if (!authRes.ok) throw new Error('Failed to get upload authorization');
+
+                    // 2. Prepare Direct Upload to ImageKit
+                    const ikFormData = new FormData();
+                    ikFormData.append('file', optimized);
+                    ikFormData.append('fileName', photo.name);
+                    ikFormData.append('publicKey', process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || '');
+                    ikFormData.append('signature', authData.signature);
+                    ikFormData.append('expire', authData.expire);
+                    ikFormData.append('token', authData.token);
+                    ikFormData.append('folder', 'testimonials');
+
+                    const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                        method: 'POST',
+                        body: ikFormData,
+                    });
+
+                    if (!uploadRes.ok) {
+                        const errJson = await uploadRes.json().catch(() => null);
+                        throw new Error(errJson?.message || `Failed to upload photo ${photo.name}`);
+                    }
+
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.url) {
+                        uploadedUrls.push(uploadData.url);
+                    }
+                }
             }
+
+            setUploadProgress('Submitting review...');
+
+            // Submit the final testimonial data as JSON
+            const payload = {
+                name: data.name,
+                email: data.email,
+                safari: data.safari,
+                visit_date: data.visitDate || null,
+                rating: rating,
+                story: data.story,
+                highlights: data.highlights || null,
+                photos: uploadedUrls,
+                custom_spam_trap_website_null: data.custom_spam_trap_website_null || ""
+            };
 
             const res = await fetch('/api/testimonials', {
                 method: 'POST',
-                body: formData,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
             });
 
             if (res.ok) {
@@ -279,7 +315,7 @@ export default function ShareExperiencePage() {
                             {/* Honeypot field for anti-spam */}
                             <input
                                 type="text"
-                                {...register("website")}
+                                {...register("custom_spam_trap_website_null")}
                                 style={{ display: 'none' }}
                                 tabIndex={-1}
                                 autoComplete="off"
@@ -290,13 +326,16 @@ export default function ShareExperiencePage() {
                                         Your Name *
                                     </label>
                                     <input
-                                        {...register("name", { required: true })}
+                                        {...register("name", { required: "Name is required" })}
                                         placeholder="John Doe"
                                         className={cn(
                                             "w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all",
                                             errors.name ? "border-red-400" : "border-transparent focus:border-safari-gold"
                                         )}
                                     />
+                                    {errors.name && (
+                                        <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-widest text-neutral-gray mb-2">
@@ -304,14 +343,24 @@ export default function ShareExperiencePage() {
                                     </label>
                                     <input
                                         type="email"
-                                        {...register("email", { required: true })}
+                                        {...register("email", { 
+                                            required: "Email is required",
+                                            pattern: {
+                                                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                                message: "Invalid email address"
+                                            }
+                                        })}
                                         placeholder="john@example.com"
                                         className={cn(
                                             "w-full bg-neutral-cream rounded-card px-4 py-3 outline-none border-2 transition-all",
                                             errors.email ? "border-red-400" : "border-transparent focus:border-safari-gold"
                                         )}
                                     />
-                                    <p className="text-xs text-neutral-gray mt-1">Your email won't be published</p>
+                                    {errors.email ? (
+                                        <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                                    ) : (
+                                        <p className="text-xs text-neutral-gray mt-1">Your email won't be published</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -393,7 +442,10 @@ export default function ShareExperiencePage() {
                                     Your Safari Story *
                                 </label>
                                 <textarea
-                                    {...register("story", { required: true, minLength: 50 })}
+                                    {...register("story", { 
+                                        required: "Safari story is required", 
+                                        minLength: { value: 50, message: "Story must be at least 50 characters long" } 
+                                    })}
                                     rows={6}
                                     placeholder="Tell us about your experience... What made it special? Any memorable moments?"
                                     className={cn(
@@ -401,7 +453,11 @@ export default function ShareExperiencePage() {
                                         errors.story ? "border-red-400" : "border-transparent focus:border-safari-gold"
                                     )}
                                 />
-                                <p className="text-xs text-neutral-gray mt-1">Minimum 50 characters</p>
+                                {errors.story ? (
+                                    <p className="text-red-500 text-xs mt-1">{errors.story.message}</p>
+                                ) : (
+                                    <p className="text-xs text-neutral-gray mt-1">Minimum 50 characters</p>
+                                )}
                             </div>
 
                             {/* Photo Upload Section */}
